@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { fetchDailyPlans, deleteDailyPlan, updateDailyPlan } from '../api/dailyPlanApi';
 import DailyPlanForm from './DailyPlanForm';
 import ReactMarkdown from 'react-markdown';
@@ -106,12 +107,12 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
       const newOutputs = { ...aiOutputs, [index]: text };
       const updatedPlan = { ...plan, ai_guide: JSON.stringify(newOutputs) };
       await updateDailyPlan(plan.id, updatedPlan);
-      if (typeof reloadPlans === 'function') reloadPlans();
+      if (typeof reloadPlans === 'function') await reloadPlans();
     } catch (error) {
       const newOutputs = { ...aiOutputs, [index]: '❌ Error: ' + error.message };
       const updatedPlan = { ...plan, ai_guide: JSON.stringify(newOutputs) };
       await updateDailyPlan(plan.id, updatedPlan);
-      if (typeof reloadPlans === 'function') reloadPlans();
+      if (typeof reloadPlans === 'function') await reloadPlans();
     } finally {
       setLoadingOutput(prev => ({ ...prev, [index]: false }));
     }
@@ -123,15 +124,13 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
     let text = t.trim();
     if (!text) return null;
     let done = false;
-    if (text.startsWith('[x] ') || text.startsWith('[X] ')) {
-      done = true;
-      text = text.substring(4);
-    } else if (text.startsWith('[ ] ')) {
-      done = false;
-      text = text.substring(4);
-    }
+    if (text.startsWith('[x] ') || text.startsWith('[X] ')) { done = true; text = text.substring(4); }
+    else if (text.startsWith('[ ] ')) { done = false; text = text.substring(4); }
     return { text, done, original: t.trim() };
   }).filter(Boolean);
+
+  const doneCount = items.filter(i => i.done).length;
+  const progressPct = items.length > 0 ? Math.round((doneCount / items.length) * 100) : 0;
 
   const handleToggle = (index) => {
     const newItems = [...items];
@@ -143,106 +142,67 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
   const renderTaskText = (text) => {
     const parts = [];
     const regex = /\[(.*?)\]\((.*?)\)/g;
-    let lastIndex = 0;
-    let match;
+    let lastIndex = 0; let match;
     while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(<span key={lastIndex}>{text.slice(lastIndex, match.index)}</span>);
-      }
-      parts.push(
-        <a key={match.index} href={match[2]} target="_blank" rel="noreferrer"
-           style={{ color: 'var(--accent)', textDecoration: 'underline', fontWeight: 500 }}
-           onClick={e => e.stopPropagation()}>
-          {match[1]}
-        </a>
-      );
+      if (match.index > lastIndex) parts.push(<span key={lastIndex}>{text.slice(lastIndex, match.index)}</span>);
+      parts.push(<a key={match.index} href={match[2]} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline', fontWeight: 500 }} onClick={e => e.stopPropagation()}>{match[1]}</a>);
       lastIndex = regex.lastIndex;
     }
-    if (lastIndex < text.length) {
-      parts.push(<span key={lastIndex}>{text.slice(lastIndex)}</span>);
-    }
+    if (lastIndex < text.length) parts.push(<span key={lastIndex}>{text.slice(lastIndex)}</span>);
     return parts.length > 0 ? parts : text;
   };
 
   const handleToggleOutput = (index, task) => {
     setShowOutput(prev => {
       const next = { ...prev, [index]: !prev[index] };
-      // Only generate if opening, not loading, and output is truly missing in plan.ai_guide
-      if (next[index] && !loadingOutput[index] && (!aiOutputs || !aiOutputs[index])) {
-        generateTaskGuide(task, index);
-      }
+      if (next[index] && !loadingOutput[index] && (!aiOutputs || !aiOutputs[index])) generateTaskGuide(task, index);
       return next;
     });
   };
 
   return (
-    <ul style={{
-      listStyle: 'none', padding: 0, margin: 0,
-      display: 'flex', flexDirection: 'column', gap: '0.5rem'
-    }}>
-      {items.map((item, i) => (
-        <li key={i} style={{
-          display: 'flex', flexDirection: 'column', gap: '0.3rem',
-          fontSize: '0.9rem', color: item.done ? 'var(--text-muted)' : 'var(--text-primary)',
-          lineHeight: 1.5, textDecoration: item.done ? 'line-through' : 'none',
-          transition: 'all var(--transition)',
-          background: 'var(--bg-main)', borderRadius: '6px', padding: '0.5rem 0.5rem 0.5rem 0',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}
-            onClick={(e) => { e.stopPropagation(); handleToggle(i); }}
-          >
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: '1.25rem', height: '1.25rem', borderRadius: '4px',
-              border: item.done ? '2px solid var(--success)' : '2px solid var(--border)',
-              flexShrink: 0, marginTop: '0.1rem',
-              background: item.done ? 'var(--success)' : 'var(--bg-main)',
-              color: 'white', fontSize: '0.8rem', transition: 'all var(--transition)'
-            }}>
-              {item.done && '✓'}
+    <div>
+      {/* Progress bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+        <div className="dp-progress-bar" style={{ marginBottom: 0, flex: 1 }}>
+          <div className="dp-progress-fill" style={{ width: `${progressPct}%` }} />
+        </div>
+        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: progressPct === 100 ? 'var(--success)' : 'var(--accent)', whiteSpace: 'nowrap' }}>
+          {doneCount}/{items.length} · {progressPct}%
+        </span>
+      </div>
+      {/* Task items */}
+      <div>
+        {items.map((item, i) => (
+          <div key={i} className={`dp-task-item ${item.done ? 'dp-task-done' : ''}`}>
+            <div className="dp-task-row">
+              <span className="dp-task-number">{i + 1}</span>
+              <div className={`dp-checkbox ${item.done ? 'checked' : ''}`} onClick={(e) => { e.stopPropagation(); handleToggle(i); }}>{item.done && '✓'}</div>
+              <div className="dp-task-text">{renderTaskText(item.text)}</div>
+              <div className="dp-task-actions">
+                <button className={`dp-task-btn ${showOutput[i] ? 'active' : ''}`} onClick={e => { e.stopPropagation(); handleToggleOutput(i, item.text); }} disabled={loadingOutput[i]}>
+                  {loadingOutput[i] ? '⏳' : showOutput[i] ? '▲ Hide' : '▼ AI Guide'}
+                </button>
+                {showOutput[i] && aiOutputs[i] && (
+                  <button className="dp-task-btn" onClick={e => { e.stopPropagation(); generateTaskGuide(item.text, i); }} disabled={loadingOutput[i]} title="Regenerate">🔄</button>
+                )}
+              </div>
             </div>
-            <div style={{ flex: 1 }}>{renderTaskText(item.text)}</div>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', marginLeft: '0.5rem' }}
-              onClick={e => { e.stopPropagation(); handleToggleOutput(i, item.text); }}
-              disabled={loadingOutput[i]}
-            >
-              {showOutput[i] ? 'Hide Output' : 'Show Output'}
-            </button>
             {showOutput[i] && (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', marginLeft: '0.5rem', color: 'var(--accent)' }}
-                onClick={e => { e.stopPropagation(); generateTaskGuide(item.text, i); }}
-                disabled={loadingOutput[i]}
-                title="Regenerate AI Output"
-              >
-                🔄 Regenerate
-              </button>
+              <div className="ai-guide-box" style={{ margin: '0.5rem 0 0.25rem 2.5rem', padding: '1rem' }}>
+                {loadingOutput[i] ? (
+                  <div className="chat-loading" style={{ padding: '0.5rem 0' }}><div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div></div>
+                ) : aiOutputs[i] ? (
+                  <div className="markdown-body"><ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutputs[i]}</ReactMarkdown></div>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>No output yet.</span>
+                )}
+              </div>
             )}
           </div>
-          {showOutput[i] && (
-            <div style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border)',
-              borderRadius: '4px', margin: '0.3rem 0 0.2rem 2.2rem', padding: '0.7rem',
-              fontSize: '0.88rem', color: 'var(--text-secondary)',
-              boxShadow: 'var(--shadow-xs)'
-            }}>
-              {loadingOutput[i] ? (
-                <span style={{ color: 'var(--text-muted)' }}>Generating AI output...</span>
-              ) : aiOutputs[i] ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiOutputs[i]}</ReactMarkdown>
-              ) : (
-                <span style={{ color: 'var(--text-muted)' }}>No output yet.</span>
-              )}
-            </div>
-          )}
-        </li>
-      ))}
-    </ul>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -326,6 +286,7 @@ const labelStyle = {
 };
 
 export default function DailyPlanList() {
+  const navigate = useNavigate();
   const [plans, setPlans] = useState([]);
   const [editId, setEditId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -489,176 +450,95 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
       </div>
 
       {/* Plan Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div className="cards-grid">
         {filtered.map(plan => {
           const isExpanded = expandedId === plan.id;
           const isEditing = editId === plan.id;
-          const taskCount = plan.tasks ? plan.tasks.split(';').filter(t => t.trim()).length : 0;
+          const taskItems = plan.tasks ? plan.tasks.split(';').filter(t => t.trim()) : [];
+          const taskCount = taskItems.length;
+          const doneTaskCount = taskItems.filter(t => t.trim().startsWith('[x] ') || t.trim().startsWith('[X] ')).length;
 
           return (
-            <div key={plan.id} style={{
-              background: 'var(--bg-card)', borderRadius: 'var(--radius-md)',
-              border: `1px solid ${isEditing ? 'var(--accent)' : 'var(--border)'}`,
-              overflow: 'hidden', transition: 'all var(--transition)',
-              boxShadow: isExpanded ? 'var(--shadow-md)' : 'var(--shadow-sm)',
-            }}>
-              {/* Collapsed Header Row */}
-              <div
-                onClick={() => !isEditing && setExpandedId(isExpanded ? null : plan.id)}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2.5rem 1fr auto',
-                  alignItems: 'center',
-                  padding: '0.85rem 1rem',
-                  cursor: isEditing ? 'default' : 'pointer',
-                  gap: '0.75rem',
-                  transition: 'background var(--transition)',
-                  background: isExpanded ? 'var(--bg-main)' : 'transparent',
-                }}
-              >
-                {/* Day number circle */}
-                <div style={{
-                  width: '2.2rem', height: '2.2rem', borderRadius: '50%',
-                  background: isExpanded ? 'var(--accent)' : 'var(--bg-main)',
-                  color: isExpanded ? 'white' : 'var(--text-secondary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.8rem', fontWeight: 700, flexShrink: 0,
-                  border: isExpanded ? 'none' : '1px solid var(--border)',
-                  transition: 'all var(--transition)',
-                }}>
-                  {plan.day}
-                </div>
-
-                {/* Main info */}
+            <div key={plan.id} className={`dp-card ${isExpanded ? 'dp-expanded' : ''}`}>
+              {/* Header Row */}
+              <div className="dp-header" onClick={() => !isEditing && setExpandedId(isExpanded ? null : plan.id)} style={{ cursor: isEditing ? 'default' : 'pointer' }}>
+                <div className="dp-day-circle">{plan.day}</div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                      {plan.focus_area}
-                    </span>
-                    <span className={getDailyPlanStatusBadge(plan.status)} style={{ fontSize: '0.65rem' }}>
-                      {getStatusIcon(plan.status)} {plan.status}
-                    </span>
-                    <span style={{
-                      fontSize: '0.72rem', color: 'var(--text-muted)',
-                      background: 'var(--bg-main)', padding: '0.15rem 0.5rem',
-                      borderRadius: '2rem', border: '1px solid var(--border)',
-                    }}>
-                      {plan.week}
-                    </span>
+                  <div className="dp-info-primary">
+                    <span className="dp-focus-area">{plan.focus_area}</span>
+                    <span className={getDailyPlanStatusBadge(plan.status)} style={{ fontSize: '0.65rem' }}>{getStatusIcon(plan.status)} {plan.status}</span>
+                    <span className="dp-stat-pill">{plan.week}</span>
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem', display: 'flex', gap: '1rem' }}>
-                    <span>📅 {plan.date}</span>
-                    <span>⏱️ {plan.hours_planned}h planned{plan.hours_actual ? ` · ${plan.hours_actual}h actual` : ''}</span>
-                    <span>📋 {taskCount} task{taskCount !== 1 ? 's' : ''}</span>
+                  <div className="dp-meta">
+                    <span className="dp-meta-item">📅 {plan.date}</span>
+                    <span className="dp-meta-item">⏱️ {plan.hours_planned}h{plan.hours_actual ? ` · ${plan.hours_actual}h actual` : ''}</span>
+                    <span className="dp-meta-item">📋 {doneTaskCount}/{taskCount} tasks</span>
                   </div>
                 </div>
-
-                {/* Expand chevron */}
-                <div style={{
-                  fontSize: '1rem', color: 'var(--text-muted)',
-                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                  transition: 'transform var(--transition)',
-                }}>
-                  ▾
+                <div className="dp-stats-row">
+                  <span className="dp-stat-pill accent">⏱ {plan.hours_planned}h</span>
+                  {taskCount > 0 && <span className={`dp-stat-pill ${doneTaskCount === taskCount ? 'success' : ''}`}>{doneTaskCount}/{taskCount} ✓</span>}
                 </div>
+                <div className="dp-chevron">▾</div>
               </div>
 
               {/* Expanded Detail */}
               {isExpanded && !isEditing && (
-                <div style={{
-                  padding: '0 1rem 1rem', borderTop: '1px solid var(--border)',
-                  animation: 'slideUp 0.3s ease forwards',
-                }}>
+                <div className="dp-body">
                   {/* Task Checklist */}
-                  <div style={{ padding: '1rem 0' }}>
-                    <div style={{ ...labelStyle, marginBottom: '0.6rem' }}>Tasks</div>
-                    <TaskChecklist plan={plan} onToggleTask={handleToggleTask} />
-                  </div>
+                  <div className="dp-section-label">📋 Tasks <span className="dp-section-count">{taskCount}</span></div>
+                  <TaskChecklist plan={plan} onToggleTask={handleToggleTask} reloadPlans={loadPlans} />
 
-                  {/* Hours & Notes Row */}
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-                    gap: '1rem', marginBottom: '1rem',
-                    padding: '0.75rem 1rem',
-                    background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border)'
-                  }}>
-                    <div>
-                      <div style={labelStyle}>Hours Planned</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent)' }}>
-                        {plan.hours_planned}h
-                      </div>
+                  {/* Details Grid */}
+                  <div className="dp-details-grid">
+                    <div className="dp-detail-item">
+                      <div className="dp-detail-value" style={{ color: 'var(--accent)' }}>{plan.hours_planned}h</div>
+                      <div className="dp-detail-label">Planned</div>
                     </div>
-                    <div>
-                      <div style={labelStyle}>Hours Actual</div>
-                      <div style={{ fontSize: '1.25rem', fontWeight: 700, color: plan.hours_actual ? 'var(--success)' : 'var(--text-muted)' }}>
-                        {plan.hours_actual ? `${plan.hours_actual}h` : '—'}
-                      </div>
+                    <div className="dp-detail-item">
+                      <div className="dp-detail-value" style={{ color: plan.hours_actual ? 'var(--success)' : 'var(--text-muted)' }}>{plan.hours_actual ? `${plan.hours_actual}h` : '—'}</div>
+                      <div className="dp-detail-label">Actual</div>
                     </div>
-                    <div>
-                      <div style={labelStyle}>Notes</div>
-                      <div style={{ fontSize: '0.85rem', color: plan.notes ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                        {plan.notes || 'No notes'}
-                      </div>
+                    <div className="dp-detail-item">
+                      <div className="dp-detail-value" style={{ color: 'var(--text-primary)' }}>{plan.week}</div>
+                      <div className="dp-detail-label">Week</div>
+                    </div>
+                    <div className="dp-detail-item">
+                      <div className="dp-detail-value" style={{ fontSize: '0.85rem', color: plan.notes ? 'var(--text-primary)' : 'var(--text-muted)' }}>{plan.notes || 'No notes'}</div>
+                      <div className="dp-detail-label">Notes</div>
                     </div>
                   </div>
 
                   {/* AI Guide Section */}
                   {showAiGuide[plan.id] && (aiLoading[plan.id] || aiGuides[plan.id] || plan.ai_guide) && (
                     <div className="ai-guide-box" style={{ position: 'relative' }}>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setShowAiGuide(prev => ({ ...prev, [plan.id]: false })); }}
-                        style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--text-muted)' }}
-                        title="Hide Guide"
-                      >
-                        ✖
-                      </button>
-                      <div className="ai-guide-header">
-                        <span style={{ fontSize: '1.2rem' }}>🤖</span> 
-                        <span style={{ fontWeight: 700, color: 'var(--accent)' }}>AI Study Guide</span>
-                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); setShowAiGuide(prev => ({ ...prev, [plan.id]: false })); }} style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: 'var(--text-muted)' }} title="Hide Guide">✖</button>
+                      <div className="ai-guide-header"><span style={{ fontSize: '1.2rem' }}>🤖</span> <span style={{ fontWeight: 700, color: 'var(--accent)' }}>AI Study Guide</span></div>
                       <div className="ai-guide-content">
                         {aiLoading[plan.id] ? (
-                          <div className="chat-loading" style={{ padding: '0.5rem 0' }}>
-                            <div className="typing-dot"></div>
-                            <div className="typing-dot"></div>
-                            <div className="typing-dot"></div>
-                          </div>
+                          <div className="chat-loading" style={{ padding: '0.5rem 0' }}><div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div></div>
                         ) : (
-                          <div className="markdown-body">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {aiGuides[plan.id] || plan.ai_guide}
-                            </ReactMarkdown>
-                          </div>
+                          <div className="markdown-body"><ReactMarkdown remarkPlugins={[remarkGfm]}>{aiGuides[plan.id] || plan.ai_guide}</ReactMarkdown></div>
                         )}
                       </div>
                     </div>
                   )}
 
                   {/* Action Buttons */}
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div className="dp-actions">
                     <button className="btn btn-edit" onClick={(e) => { e.stopPropagation(); setEditId(plan.id); }}>✏️ Edit</button>
                     <button className="btn btn-danger" onClick={(e) => { e.stopPropagation(); handleDelete(plan.id); }}>🗑️ Delete</button>
                     {!(plan.status || '').toLowerCase().includes('done') && (
-                      <button className="btn btn-primary" onClick={async (e) => {
-                        e.stopPropagation();
-                        await updateDailyPlan(plan.id, { ...plan, status: 'Done' });
-                        loadPlans();
-                      }}>✅ Mark Done</button>
+                      <button className="btn btn-primary" onClick={async (e) => { e.stopPropagation(); await updateDailyPlan(plan.id, { ...plan, status: 'Done' }); loadPlans(); }}>✅ Mark Done</button>
                     )}
+                    <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); navigate(`/study?topic=${encodeURIComponent(plan.focus_area)}&date=${encodeURIComponent(plan.date)}`); }}>📚 Log Study</button>
                     {plan.ai_guide || aiGuides[plan.id] ? (
                       <>
-                        <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); setShowAiGuide(prev => ({ ...prev, [plan.id]: !prev[plan.id] })); }}>
-                          🤖 {showAiGuide[plan.id] ? 'Hide Study Guide' : 'Show Study Guide'}
-                        </button>
-                        <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); generateGuide(plan); setShowAiGuide(prev => ({ ...prev, [plan.id]: true })); }} disabled={aiLoading[plan.id]}>
-                          🔄 Regenerate
-                        </button>
+                        <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); setShowAiGuide(prev => ({ ...prev, [plan.id]: !prev[plan.id] })); }}>🤖 {showAiGuide[plan.id] ? 'Hide Guide' : 'Show Guide'}</button>
+                        <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); generateGuide(plan); setShowAiGuide(prev => ({ ...prev, [plan.id]: true })); }} disabled={aiLoading[plan.id]}>🔄 Regenerate</button>
                       </>
                     ) : (
-                      <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); generateGuide(plan); setShowAiGuide(prev => ({ ...prev, [plan.id]: true })); }} disabled={aiLoading[plan.id]}>
-                        🤖 Generate Study Guide
-                      </button>
+                      <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); generateGuide(plan); setShowAiGuide(prev => ({ ...prev, [plan.id]: true })); }} disabled={aiLoading[plan.id]}>🤖 Generate Study Guide</button>
                     )}
                   </div>
                 </div>

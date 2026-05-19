@@ -32,14 +32,21 @@ const getStatusBadgeClass = (status) => {
 export default function JobAppList() {
   const [apps, setApps] = useState([]);
   const [editId, setEditId] = useState(null);
+  
+  const params = new URLSearchParams(window.location.search);
+  const initialCompany = params.get('company') || '';
+  const [searchQuery, setSearchQuery] = useState(initialCompany);
+
   const loadApps = () => fetchJobApps().then(res => setApps(res.data));
   useEffect(() => { loadApps(); }, []);
+
   const handleDelete = async (id) => {
     if (window.confirm('Delete this job application?')) {
       await deleteJobApp(id);
       loadApps();
     }
   };
+
   const handleEdit = (id) => setEditId(id);
   const handleCancel = () => setEditId(null);
   const handleSave = async (form) => {
@@ -47,9 +54,48 @@ export default function JobAppList() {
     setEditId(null);
     loadApps();
   };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
+  const filteredApps = apps.filter(app => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (app.company || '').toLowerCase().includes(q) || (app.role || '').toLowerCase().includes(q);
+  });
+
   return (
     <div>
-      <JobAppForm onSuccess={loadApps} />
+      <JobAppForm onSuccess={loadApps} defaultCompany={initialCompany} />
+
+      {/* Filter and Search Bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem',
+        padding: '0.75rem 1rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--border)', flexWrap: 'wrap'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+          <span style={{ fontSize: '1rem' }}>🔍</span>
+          <input 
+            className="form-control" 
+            placeholder="Search by company or role..." 
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border)', flex: 1 }}
+          />
+          {searchQuery && (
+            <button className="btn btn-ghost" onClick={handleClearSearch} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+              Clear
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          Showing <strong style={{ color: 'var(--text-primary)' }}>{filteredApps.length}</strong> of {apps.length} applications
+        </div>
+      </div>
+
       <div className="table-responsive">
         <table className="styled-table">
           <thead>
@@ -63,7 +109,7 @@ export default function JobAppList() {
             </tr>
           </thead>
           <tbody>
-            {apps.map(app => (
+            {filteredApps.map(app => (
               <tr key={app.id} className={editId === app.id ? 'editing-row' : ''}>
                 {editId === app.id ? (
                   <td colSpan="6">
@@ -86,12 +132,13 @@ export default function JobAppList() {
                 )}
               </tr>
             ))}
-            {apps.length === 0 && (
+            {filteredApps.length === 0 && (
               <tr>
                 <td colSpan="6" style={{ padding: 0 }}>
-                  <div className="empty-state">
+                  <div className="empty-state" style={{ padding: '3rem 1.5rem' }}>
                     <div className="empty-state-icon">🏢</div>
                     <div className="empty-state-text">No job applications found.</div>
+                    {searchQuery && <div className="empty-state-sub" style={{ marginTop: '0.5rem' }}>Try clearing your search query.</div>}
                   </div>
                 </td>
               </tr>

@@ -23,14 +23,22 @@ function EditRow({ log, onSave, onCancel }) {
 export default function StudyLogList() {
   const [logs, setLogs] = useState([]);
   const [editId, setEditId] = useState(null);
+
+  const params = new URLSearchParams(window.location.search);
+  const initialTopic = params.get('topic') || '';
+  const initialDate = params.get('date') || '';
+  const [searchQuery, setSearchQuery] = useState(initialTopic);
+
   const loadLogs = () => fetchStudyLogs().then(res => setLogs(res.data));
   useEffect(() => { loadLogs(); }, []);
+
   const handleDelete = async (id) => {
     if (window.confirm('Delete this study log?')) {
       await deleteStudyLog(id);
       loadLogs();
     }
   };
+
   const handleEdit = (id) => setEditId(id);
   const handleCancel = () => setEditId(null);
   const handleSave = async (form) => {
@@ -38,9 +46,48 @@ export default function StudyLogList() {
     setEditId(null);
     loadLogs();
   };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  };
+
+  const filteredLogs = logs.filter(log => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return (log.topic || '').toLowerCase().includes(q) || (log.subtopic || '').toLowerCase().includes(q);
+  });
+
   return (
     <div>
-      <StudyLogForm onSuccess={loadLogs} />
+      <StudyLogForm onSuccess={loadLogs} defaultTopic={initialTopic} defaultDate={initialDate} />
+
+      {/* Filter and Search Bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem',
+        padding: '0.75rem 1rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--border)', flexWrap: 'wrap'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
+          <span style={{ fontSize: '1rem' }}>🔍</span>
+          <input 
+            className="form-control" 
+            placeholder="Search by topic or subtopic..." 
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border)', flex: 1 }}
+          />
+          {searchQuery && (
+            <button className="btn btn-ghost" onClick={handleClearSearch} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+              Clear
+            </button>
+          )}
+        </div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+          Showing <strong style={{ color: 'var(--text-primary)' }}>{filteredLogs.length}</strong> of {logs.length} study logs
+        </div>
+      </div>
+
       <div className="table-responsive">
         <table className="styled-table">
           <thead>
@@ -54,7 +101,7 @@ export default function StudyLogList() {
             </tr>
           </thead>
           <tbody>
-            {logs.map(log => (
+            {filteredLogs.map(log => (
               <tr key={log.id} className={editId === log.id ? 'editing-row' : ''}>
                 {editId === log.id ? (
                   <td colSpan="6">
@@ -75,12 +122,13 @@ export default function StudyLogList() {
                 )}
               </tr>
             ))}
-            {logs.length === 0 && (
+            {filteredLogs.length === 0 && (
               <tr>
                 <td colSpan="6" style={{ padding: 0 }}>
-                  <div className="empty-state">
+                  <div className="empty-state" style={{ padding: '3rem 1.5rem' }}>
                     <div className="empty-state-icon">📚</div>
                     <div className="empty-state-text">No study logs found.</div>
+                    {searchQuery && <div className="empty-state-sub" style={{ marginTop: '0.5rem' }}>Try clearing your search query.</div>}
                   </div>
                 </td>
               </tr>
