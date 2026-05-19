@@ -31,6 +31,10 @@ class DailyPlanOut(DailyPlanCreate):
     id: int
     model_config = ConfigDict(from_attributes=True)
 
+class DailyPlanBulkCreate(BaseModel):
+    plans: List[DailyPlanCreate]
+    clear_existing: bool = True
+
 
 # --- JobApplication ---
 class JobApplicationCreate(BaseModel):
@@ -166,6 +170,16 @@ def create_daily_plan(plan: DailyPlanCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_plan)
     return db_plan
+
+@router.post("/dailyplan/bulk")
+def bulk_create_daily_plans(payload: DailyPlanBulkCreate, db: Session = Depends(get_db)):
+    if payload.clear_existing:
+        db.query(DailyPlan).delete()
+    for plan in payload.plans:
+        db_plan = DailyPlan(**plan.model_dump())
+        db.add(db_plan)
+    db.commit()
+    return {"ok": True, "count": len(payload.plans)}
 
 @router.get("/dailyplan/", response_model=List[DailyPlanOut])
 def get_daily_plans(db: Session = Depends(get_db)):
@@ -722,4 +736,37 @@ def export_db_to_csv_zip(db: Session = Depends(get_db)):
         media_type="application/zip",
         headers={"Content-Disposition": "attachment; filename=progress_tracker_export.zip"}
     )
+
+
+@router.get("/youtube/search")
+def search_youtube_video(q: str):
+    import urllib.request
+    import urllib.parse
+    import re
+    try:
+        # Encode search query
+        query = urllib.parse.quote(q)
+        url = f"https://www.youtube.com/results?search_query={query}"
+        
+        # Make request with a standard user-agent to avoid blocks
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Safari/537.36'}
+        )
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            html = response.read().decode('utf-8')
+            
+        # Search for videoIds
+        video_ids = re.findall(r"\"videoId\":\"([^\"]+)\"", html)
+        if video_ids:
+            unique_ids = []
+            for v_id in video_ids:
+                if v_id not in unique_ids and len(v_id) == 11:
+                    unique_ids.append(v_id)
+            if unique_ids:
+                return {"videoId": unique_ids[0]}
+    except Exception as e:
+        print("YouTube scrape error:", e)
+    return {"videoId": None}
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { fetchDailyPlans, deleteDailyPlan, updateDailyPlan } from '../api/dailyPlanApi';
+import API_BASE_URL from '../api/config';
 import DailyPlanForm from './DailyPlanForm';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -29,6 +30,30 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
   const tasks = plan.tasks;
   const [showOutput, setShowOutput] = React.useState({}); // {index: bool}
   const [loadingOutput, setLoadingOutput] = React.useState({}); // {index: bool}
+  const [showVideo, setShowVideo] = React.useState({}); // {index: bool}
+  const [loadingVideo, setLoadingVideo] = React.useState({}); // {index: bool}
+  const [videoIds, setVideoIds] = React.useState({}); // {index: string}
+
+  const handleToggleVideo = async (index, taskText) => {
+    setShowVideo(prev => ({ ...prev, [index]: !prev[index] }));
+    if (videoIds[index] || loadingVideo[index]) return;
+
+    setLoadingVideo(prev => ({ ...prev, [index]: true }));
+    try {
+      const response = await fetch(`${API_BASE_URL}/youtube/search?q=${encodeURIComponent(plan.focus_area + ' ' + taskText)}`);
+      const data = await response.json();
+      if (data.videoId) {
+        setVideoIds(prev => ({ ...prev, [index]: data.videoId }));
+      } else {
+        setVideoIds(prev => ({ ...prev, [index]: 'NOT_FOUND' }));
+      }
+    } catch (e) {
+      console.error("Error loading YouTube video:", e);
+      setVideoIds(prev => ({ ...prev, [index]: 'ERROR' }));
+    } finally {
+      setLoadingVideo(prev => ({ ...prev, [index]: false }));
+    }
+  };
 
   // Always derive outputs from plan.ai_guide (source of truth)
   let aiOutputs = {};
@@ -183,6 +208,21 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
               <div className={`dp-checkbox ${item.done ? 'checked' : ''}`} onClick={(e) => { e.stopPropagation(); handleToggle(i); }}>{item.done && '✓'}</div>
               <div className="dp-task-text">{renderTaskText(item.text)}</div>
               <div className="dp-task-actions">
+                <button
+                  className={`dp-task-btn dp-task-btn-youtube ${showVideo[i] ? 'active' : ''}`}
+                  onClick={e => { e.stopPropagation(); handleToggleVideo(i, item.text); }}
+                  title="Toggle YouTube Video tutorial embed"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    color: 'var(--danger)',
+                    textDecoration: 'none',
+                    background: showVideo[i] ? 'rgba(239, 68, 68, 0.1)' : 'transparent'
+                  }}
+                >
+                  {loadingVideo[i] ? '⏳' : showVideo[i] ? '▲ Video' : '▼ Video'}
+                </button>
                 <button className={`dp-task-btn ${showOutput[i] ? 'active' : ''}`} onClick={e => { e.stopPropagation(); handleToggleOutput(i, item.text); }} disabled={loadingOutput[i]}>
                   {loadingOutput[i] ? '⏳' : showOutput[i] ? '▲ Hide' : '▼ AI Guide'}
                 </button>
@@ -191,6 +231,39 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
                 )}
               </div>
             </div>
+            {showVideo[i] && (
+              <div style={{ margin: '0.5rem 0 0.5rem 2.5rem', background: '#000', borderRadius: '8px', overflow: 'hidden', padding: '0.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                {loadingVideo[i] ? (
+                  <div className="chat-loading" style={{ padding: '1rem 0' }}>
+                    <div className="typing-dot"></div>
+                    <div className="typing-dot"></div>
+                    <div className="typing-dot"></div>
+                  </div>
+                ) : videoIds[i] && videoIds[i] !== 'NOT_FOUND' && videoIds[i] !== 'ERROR' ? (
+                  <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0 }}>
+                    <iframe
+                      title={`YouTube video for task ${i + 1}`}
+                      src={`https://www.youtube.com/embed/${videoIds[i]}`}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ padding: '1rem', color: '#ff4d4d', fontSize: '0.85rem', fontWeight: 600 }}>
+                    ⚠️ {videoIds[i] === 'NOT_FOUND' ? 'No video found for this task. Try checking search terms.' : 'Failed to load video due to connection limits.'}
+                  </div>
+                )}
+              </div>
+            )}
             {showOutput[i] && (
               <div className="ai-guide-box" style={{ margin: '0.5rem 0 0.25rem 2.5rem', padding: '1rem' }}>
                 {loadingOutput[i] ? (

@@ -602,6 +602,11 @@ body {
   color: var(--accent);
 }
 
+.dp-task-btn-youtube:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: var(--danger) !important;
+}
+
 .dp-task-btn.active {
   background: var(--accent-light);
   color: var(--accent);
