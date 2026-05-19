@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createJobApp } from '../api/jobAppApi';
+import { fetchTargetCompanies, updateTargetCompany } from '../api/targetCompanyApi';
 import { fetchTargetCompanies, updateTargetCompany } from '../api/targetCompanyApi';
 
 export default function JobAppForm({ onSuccess, defaultCompany }) {
@@ -19,12 +21,24 @@ export default function JobAppForm({ onSuccess, defaultCompany }) {
       setForm(prev => ({ ...prev, company: defaultCompany }));
     }
   }, [defaultCompany]);
+  const [targetCompanies, setTargetCompanies] = useState([]);
+
+  useEffect(() => {
+    fetchTargetCompanies().then(res => setTargetCompanies(res.data)).catch(err => console.error("Failed to fetch target companies", err));
+  }, []);
+
+  useEffect(() => {
+    if (defaultCompany) {
+      setForm(prev => ({ ...prev, company: defaultCompany }));
+    }
+  }, [defaultCompany]);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async e => {
     e.preventDefault();
     try {
+      // 1. Create the job application
       // 1. Create the job application
       await createJobApp({
         ...form,
@@ -66,14 +80,14 @@ export default function JobAppForm({ onSuccess, defaultCompany }) {
               </div>
               <div className="form-group">
                 <label className="form-label required">Company</label>
-                <input 
-                  className="form-control" 
-                  name="company" 
-                  placeholder="e.g. Google" 
-                  value={form.company} 
-                  onChange={handleChange} 
+                <input
+                  className="form-control"
+                  name="company"
+                  placeholder="e.g. Google"
+                  value={form.company}
+                  onChange={handleChange}
                   list="target-companies-list"
-                  required 
+                  required
                 />
                 <datalist id="target-companies-list">
                   {targetCompanies.map(tc => (

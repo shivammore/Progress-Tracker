@@ -12,9 +12,9 @@ function EditRow({ app, onSave, onCancel }) {
   };
   return (
     <form onSubmit={handleSubmit} className="form-grid" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-      <input className="form-control" name="company" value={form.company} onChange={handleChange} required style={{width:120}} />
-      <input className="form-control" name="role" value={form.role} onChange={handleChange} required style={{width:120}} />
-      <input className="form-control" name="status" value={form.status} onChange={handleChange} required style={{width:100}} />
+      <input className="form-control" name="company" value={form.company} onChange={handleChange} required style={{ width: 120 }} />
+      <input className="form-control" name="role" value={form.role} onChange={handleChange} required style={{ width: 120 }} />
+      <input className="form-control" name="status" value={form.status} onChange={handleChange} required style={{ width: 100 }} />
       <button className="btn btn-primary" type="submit">💾 Save</button>
       <button className="btn" type="button" onClick={onCancel} style={{ background: '#e2e8f0' }}>❌ Cancel</button>
     </form>
@@ -34,7 +34,7 @@ export default function JobAppList() {
   const [apps, setApps] = useState([]);
   const [editId, setEditId] = useState(null);
   const [viewMode, setViewMode] = useState(localStorage.getItem('jobViewMode') || 'table');
-  
+
   const params = new URLSearchParams(window.location.search);
   const initialCompany = params.get('company') || '';
   const [searchQuery, setSearchQuery] = useState(initialCompany);
@@ -42,12 +42,14 @@ export default function JobAppList() {
   const loadApps = () => fetchJobApps().then(res => setApps(res.data));
   useEffect(() => { loadApps(); }, []);
 
+
   const handleDelete = async (id) => {
     if (window.confirm('Delete this job application?')) {
       await deleteJobApp(id);
       loadApps();
     }
   };
+
 
   const handleEdit = (id) => setEditId(id);
   const handleCancel = () => setEditId(null);
@@ -85,9 +87,9 @@ export default function JobAppList() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '200px' }}>
           <span style={{ fontSize: '1rem' }}>🔍</span>
-          <input 
-            className="form-control" 
-            placeholder="Search by company or role..." 
+          <input
+            className="form-control"
+            placeholder="Search by company or role..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border)', flex: 1 }}
@@ -98,15 +100,15 @@ export default function JobAppList() {
             </button>
           )}
         </div>
-        
+
         {/* Toggle Switch */}
         <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--border)', padding: '0.2rem', borderRadius: 'var(--radius-md)' }}>
-          <button 
-            className="btn" 
+          <button
+            className="btn"
             onClick={() => toggleViewMode('table')}
-            style={{ 
-              padding: '0.35rem 0.75rem', 
-              fontSize: '0.8rem', 
+            style={{
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.8rem',
               background: viewMode === 'table' ? 'var(--bg-card)' : 'transparent',
               color: viewMode === 'table' ? 'var(--text-primary)' : 'var(--text-secondary)',
               border: 'none',
@@ -116,12 +118,12 @@ export default function JobAppList() {
           >
             📋 List
           </button>
-          <button 
-            className="btn" 
+          <button
+            className="btn"
             onClick={() => toggleViewMode('kanban')}
-            style={{ 
-              padding: '0.35rem 0.75rem', 
-              fontSize: '0.8rem', 
+            style={{
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.8rem',
               background: viewMode === 'kanban' ? 'var(--bg-card)' : 'transparent',
               color: viewMode === 'kanban' ? 'var(--text-primary)' : 'var(--text-secondary)',
               border: 'none',
@@ -139,9 +141,9 @@ export default function JobAppList() {
       </div>
 
       {viewMode === 'kanban' ? (
-        <JobKanbanView 
-          apps={filteredApps} 
-          onAppUpdated={loadApps} 
+        <JobKanbanView
+          apps={filteredApps}
+          onAppUpdated={loadApps}
           onDeleteApp={handleDelete}
           onEditApp={handleEdit}
           editId={editId}

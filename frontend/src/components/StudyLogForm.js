@@ -1,12 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createStudyLog } from '../api/studyLogApi';
 
 export default function StudyLogForm({ onSuccess, defaultTopic, defaultDate }) {
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState({
     date: defaultDate || '', topic: defaultTopic || '', subtopic: '', hours: '', confidence: '', sql_solved: '', pyspark_solved: '', resources: '', notes: ''
+    date: defaultDate || '', topic: defaultTopic || '', subtopic: '', hours: '', confidence: '', sql_solved: '', pyspark_solved: '', resources: '', notes: ''
   });
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (defaultTopic || defaultDate) {
+      setForm(prev => ({
+        ...prev,
+        topic: defaultTopic || prev.topic,
+        date: defaultDate || prev.date
+      }));
+    }
+  }, [defaultTopic, defaultDate]);
 
   useEffect(() => {
     if (defaultTopic || defaultDate) {
