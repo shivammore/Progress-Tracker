@@ -5,9 +5,9 @@ from .models import (
     ProjectMilestone, QuestionBank, Offer, Reminder, TargetCompany
 )
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
-from datetime import date
-
+from typing import List, Optional, Dict, Any
+from datetime import date, timedelta, datetime
+from sqlalchemy import func
 router = APIRouter()
 
 # ============================================================
@@ -541,3 +541,185 @@ def delete_target_company(tc_id: int, db: Session = Depends(get_db)):
     db.delete(db_tc)
     db.commit()
     return {"ok": True}
+
+
+# ============================================================
+# Analytics Endpoint
+# ============================================================
+@router.get("/analytics/summary")
+def get_analytics_summary(db: Session = Depends(get_db)):
+    today = date.today()
+    
+    # 1. Total Counts
+    total_plans = db.query(DailyPlan).count()
+    completed_plans = db.query(DailyPlan).filter(
+        DailyPlan.status.ilike("%done%") | DailyPlan.status.ilike("%complete%")
+    ).count()
+    
+    total_questions = db.query(QuestionBank).count()
+    total_milestones = db.query(ProjectMilestone).count()
+    completed_milestones = db.query(ProjectMilestone).filter(
+        ProjectMilestone.status.ilike("%done%") | ProjectMilestone.status.ilike("%complete%")
+    ).count()
+    
+    total_targets = db.query(TargetCompany).count()
+    total_apps = db.query(JobApplication).count()
+    total_mocks = db.query(MockInterview).count()
+    
+    # 2. Upcoming Daily Plans (Next 5 not done)
+    upcoming_plans = db.query(DailyPlan).filter(
+        DailyPlan.date >= today,
+        ~DailyPlan.status.ilike("%done%")
+    ).order_by(DailyPlan.date.asc()).limit(5).all()
+    
+    # 3. Questions by Topic
+    questions_by_topic = db.query(
+        QuestionBank.topic, func.count(QuestionBank.id)
+    ).group_by(QuestionBank.topic).all()
+    
+    # 4. Job App Pipeline (Statuses)
+    app_pipeline = db.query(
+        JobApplication.status, func.count(JobApplication.id)
+    ).group_by(JobApplication.status).all()
+    
+    # 5. Study Hours (Last 8 Weeks)
+    eight_weeks_ago = today - timedelta(days=56)
+    study_logs = db.query(StudyLog).filter(StudyLog.date >= eight_weeks_ago).all()
+    # Group in python for simplicity
+    study_by_week = {}
+    for log in study_logs:
+        if not log.date or not log.hours:
+            continue
+        # Get start of week (Monday)
+        week_start = log.date - timedelta(days=log.date.weekday())
+        week_str = week_start.strftime("%Y-%m-%d")
+        study_by_week[week_str] = study_by_week.get(week_str, 0) + log.hours
+    
+    # 6. Upcoming Reminders
+    upcoming_reminders = db.query(Reminder).filter(
+        Reminder.completed == False
+    ).order_by(Reminder.due_date.asc()).limit(10).all()
+    
+    # 7. Recent Activity (Latest 5 Study Logs)
+    recent_activity = []
+    recent_logs = db.query(StudyLog).order_by(StudyLog.date.desc()).limit(5).all()
+    for log in recent_logs:
+        recent_activity.append({
+            "type": "study",
+            "date": log.date.isoformat() if log.date else None,
+            "title": f"Studied {log.topic}",
+            "desc": f"{log.hours} hours"
+        })
+    
+    # 8. Study Streak
+    # Calculate consecutive days with a study log ending near today
+    all_dates = db.query(StudyLog.date).distinct().order_by(StudyLog.date.desc()).all()
+    date_set = {d[0] for d in all_dates if d[0]}
+    
+    current_streak = 0
+    check_date = today
+    if check_date not in date_set:
+        check_date = today - timedelta(days=1)
+    
+    while check_date in date_set:
+        current_streak += 1
+        check_date -= timedelta(days=1)
+        
+    return {
+        "counts": {
+            "total_plans": total_plans,
+            "completed_plans": completed_plans,
+            "total_questions": total_questions,
+            "total_milestones": total_milestones,
+            "completed_milestones": completed_milestones,
+            "total_targets": total_targets,
+            "total_apps": total_apps,
+            "total_mocks": total_mocks
+        },
+        "upcoming_plans": [
+            {"date": p.date.isoformat() if p.date else None, "focus_area": p.focus_area, "status": p.status} 
+            for p in upcoming_plans
+        ],
+        "questions_by_topic": [{"topic": row[0], "count": row[1]} for row in questions_by_topic],
+        "app_pipeline": [{"status": row[0], "count": row[1]} for row in app_pipeline],
+        "study_by_week": study_by_week,
+        "upcoming_reminders": [
+            {"id": r.id, "title": r.title, "due_date": r.due_date.isoformat() if r.due_date else None, "completed": r.completed} 
+            for r in upcoming_reminders
+        ],
+        "recent_activity": recent_activity,
+        "current_streak": current_streak
+    }
+
+
+# ============================================================
+# Backup & Export Endpoint
+# ============================================================
+@router.get("/export/csv")
+def export_db_to_csv_zip(db: Session = Depends(get_db)):
+    import csv
+    import io
+    import zipfile
+    from fastapi.responses import StreamingResponse
+    
+    def to_csv_bytes(records, fields):
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(fields)
+        for record in records:
+            row = []
+            for field in fields:
+                val = getattr(record, field, None)
+                if isinstance(val, (date, datetime)):
+                    row.append(val.isoformat())
+                else:
+                    row.append(str(val) if val is not None else "")
+            writer.writerow(row)
+        return output.getvalue().encode('utf-8')
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        # 1. Daily plans
+        zip_file.writestr("daily_plans.csv", to_csv_bytes(db.query(DailyPlan).all(), [
+            "id", "day", "date", "week", "focus_area", "tasks", "hours_planned", "status", "hours_actual", "notes", "ai_guide"
+        ]))
+        # 2. Job applications
+        zip_file.writestr("job_applications.csv", to_csv_bytes(db.query(JobApplication).all(), [
+            "id", "date_applied", "company", "role", "location", "source", "job_link", "referral", "status", "recruiter_contact", "next_step", "next_step_date", "notes"
+        ]))
+        # 3. Study logs
+        zip_file.writestr("study_logs.csv", to_csv_bytes(db.query(StudyLog).all(), [
+            "id", "date", "topic", "subtopic", "hours", "confidence", "sql_solved", "pyspark_solved", "resources", "notes"
+        ]))
+        # 4. Mock interviews
+        zip_file.writestr("mock_interviews.csv", to_csv_bytes(db.query(MockInterview).all(), [
+            "id", "date", "type", "platform", "score", "strengths", "weak_areas", "action_items"
+        ]))
+        # 5. Project milestones
+        zip_file.writestr("project_milestones.csv", to_csv_bytes(db.query(ProjectMilestone).all(), [
+            "id", "project", "milestone", "owner", "due_date", "status", "github_url", "notes"
+        ]))
+        # 6. Question bank
+        zip_file.writestr("question_bank.csv", to_csv_bytes(db.query(QuestionBank).all(), [
+            "id", "topic", "question", "difficulty", "answer", "confidence", "last_revised"
+        ]))
+        # 7. Offers
+        zip_file.writestr("offers.csv", to_csv_bytes(db.query(Offer).all(), [
+            "id", "company", "role", "ctc", "base", "bonus", "stocks", "benefits", "notes", "status"
+        ]))
+        # 8. Reminders
+        zip_file.writestr("reminders.csv", to_csv_bytes(db.query(Reminder).all(), [
+            "id", "title", "due_date", "completed", "notes"
+        ]))
+        # 9. Target companies
+        zip_file.writestr("target_companies.csv", to_csv_bytes(db.query(TargetCompany).all(), [
+            "id", "company", "tier", "role", "why_it_fits", "referral_contact", "status"
+        ]))
+        
+    zip_buffer.seek(0)
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=progress_tracker_export.zip"}
+    )
+

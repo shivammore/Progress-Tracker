@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from '../api/config';
 
 
 export default function Settings() {
@@ -35,6 +36,10 @@ export default function Settings() {
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleExport = () => {
+    window.location.href = `${API_BASE_URL}/export/csv`;
   };
 
   return (
@@ -106,6 +111,29 @@ export default function Settings() {
             <li>Click "Create API key" and copy it into the field above.</li>
           </ol>
         </div>
+      </div>
+
+      <div className="form-container" style={{ maxWidth: '600px', margin: '2rem auto 0 auto' }}>
+        <h3>Backup & Data Export</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+          Download a complete backup of your Progress Tracker database. 
+          This compiles and downloads all 9 database tables (study logs, target companies, milestones, daily plans, job applications, offers, mock interviews, reminders, and question bank) as individual CSV spreadsheets packed into a single, light ZIP archive.
+        </p>
+
+        <button 
+          onClick={handleExport} 
+          className="btn btn-primary" 
+          style={{ 
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+            border: 'none',
+            color: 'white',
+            padding: '0.6rem 1.2rem',
+            fontWeight: 700
+          }}
+        >
+          📥 Export All Data (ZIP)
+        </button>
       </div>
     </div>
   );

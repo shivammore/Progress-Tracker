@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createReminder } from '../api/reminderApi';
 
 export default function ReminderForm({ onSuccess }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState({
     title: '', due_date: '', completed: false, notes: ''
   });
@@ -18,6 +19,7 @@ export default function ReminderForm({ onSuccess }) {
       await createReminder({ ...form });
       setForm({ title: '', due_date: '', completed: false, notes: '' });
       setError(null);
+      setIsOpen(false);
       if (onSuccess) onSuccess();
     } catch (err) {
       setError('Failed to add reminder');
@@ -25,20 +27,49 @@ export default function ReminderForm({ onSuccess }) {
   };
 
   return (
-    <div className="form-container">
-      <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#4f46e5' }}>Add Reminder</h3>
-      <form onSubmit={handleSubmit}>
-        <div className="form-grid">
-          <input className="form-control" name="title" placeholder="Title" value={form.title} onChange={handleChange} required style={{flex:2}} />
-          <input className="form-control" name="due_date" type="date" value={form.due_date} onChange={handleChange} required />
-          <input className="form-control" name="notes" placeholder="Notes" value={form.notes} onChange={handleChange} style={{flex:2}} />
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-            <input name="completed" type="checkbox" checked={form.completed} onChange={handleChange} style={{ width: '1.2rem', height: '1.2rem' }} /> Completed
-          </label>
-          <button className="btn btn-primary" type="submit">➕ Add</button>
+    <div className="form-collapsible">
+      <div className="form-collapsible-header" onClick={() => setIsOpen(!isOpen)}>
+        <div className="form-collapsible-title">⏰ Add Reminder</div>
+        <div>{isOpen ? '▲' : '▼'}</div>
+      </div>
+      {isOpen && (
+        <div className="form-collapsible-body">
+          <form onSubmit={handleSubmit}>
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 2 }}>
+                <label className="form-label required">Title</label>
+                <input className="form-control" name="title" placeholder="What to remember..." value={form.title} onChange={handleChange} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label required">Due Date</label>
+                <input className="form-control" name="due_date" type="date" value={form.due_date} onChange={handleChange} required />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Notes</label>
+                <textarea className="form-control" name="notes" placeholder="Additional details..." value={form.notes} onChange={handleChange} rows={2}></textarea>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, cursor: 'pointer' }}>
+                  <input name="completed" type="checkbox" checked={form.completed} onChange={handleChange} style={{ width: '1.2rem', height: '1.2rem' }} /> 
+                  Mark as Completed
+                </label>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button className="btn btn-ghost" type="button" onClick={() => setIsOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" type="submit">➕ Add Reminder</button>
+            </div>
+            {error && <div style={{ color: '#e11d48', marginTop: '1rem', fontWeight: 600 }}>{error}</div>}
+          </form>
         </div>
-        {error && <div style={{ color: '#e11d48', marginTop: '1rem', fontWeight: 600 }}>{error}</div>}
-      </form>
+      )}
     </div>
   );
 }

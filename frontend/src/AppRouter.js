@@ -14,6 +14,8 @@ import TargetCompanyList from './components/TargetCompanyList';
 import RoadmapPage from './RoadmapPage';
 import AIAssistant from './components/AIAssistant';
 import Settings from './components/Settings';
+import StudyAnalytics from './components/StudyAnalytics';
+import GlobalSearch from './components/GlobalSearch';
 
 const navSections = [
   {
@@ -35,6 +37,7 @@ const navSections = [
     items: [
       { path: '/questions', icon: '💡', label: 'Question Bank' },
       { path: '/study', icon: '📚', label: 'Study Logs' },
+      { path: '/analytics', icon: '📈', label: 'Analytics' },
       { path: '/mock', icon: '🎤', label: 'Mock Interviews' },
       { path: '/milestones', icon: '🚀', label: 'Projects' },
     ],
@@ -61,6 +64,7 @@ const routes = [
   { path: '/daily', element: <SectionPage title="📅 Daily Plans"><DailyPlanList /></SectionPage> },
   { path: '/jobs', element: <SectionPage title="🏢 Job Applications"><JobAppList /></SectionPage> },
   { path: '/study', element: <SectionPage title="📚 Study Logs"><StudyLogList /></SectionPage> },
+  { path: '/analytics', element: <SectionPage title="📈 Study Analytics"><StudyAnalytics /></SectionPage> },
   { path: '/mock', element: <SectionPage title="🎤 Mock Interviews"><MockInterviewList /></SectionPage> },
   { path: '/milestones', element: <SectionPage title="🚀 Project Milestones"><MilestoneList /></SectionPage> },
   { path: '/questions', element: <SectionPage title="💡 Question Bank"><QuestionBankList /></SectionPage> },
@@ -105,8 +109,39 @@ function TopBar() {
     return n.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
   };
 
+  const triggerSearch = () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true
+    });
+    window.dispatchEvent(event);
+  };
+
   return (
-    <div className="top-bar">
+    <div className="top-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div 
+        className="top-bar-search-trigger" 
+        onClick={triggerSearch}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          padding: '0.45rem 0.9rem', background: 'var(--bg-main)',
+          border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
+          fontSize: '0.85rem', color: 'var(--text-secondary)',
+          cursor: 'pointer', minWidth: '220px', userSelect: 'none',
+          transition: 'all var(--transition)'
+        }}
+      >
+        <span>🔍</span>
+        <span style={{ flex: 1, textAlign: 'left' }}>Search...</span>
+        <kbd style={{
+          fontSize: '0.7rem', background: 'var(--border)', 
+          padding: '0.1rem 0.35rem', borderRadius: '4px',
+          fontWeight: 'bold', color: 'var(--text-muted)',
+          fontFamily: 'inherit'
+        }}>Ctrl+K</kbd>
+      </div>
+
       <div className="top-bar-user">
         {isEditing ? (
           <div className="user-edit-form">
@@ -172,6 +207,7 @@ export default function AppRouter() {
   return (
     <Router>
       <ScrollToTop />
+      <GlobalSearch />
       <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
         {sidebarOpen ? '✕' : '☰'}
       </button>

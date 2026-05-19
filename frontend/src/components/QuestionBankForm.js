@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createQuestion } from '../api/questionBankApi';
 
 export default function QuestionBankForm({ onSuccess }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState({
     topic: '', question: '', difficulty: '', answer: '', confidence: '', last_revised: ''
   });
@@ -18,6 +19,7 @@ export default function QuestionBankForm({ onSuccess }) {
       });
       setForm({ topic: '', question: '', difficulty: '', answer: '', confidence: '', last_revised: '' });
       setError(null);
+      setIsOpen(false);
       if (onSuccess) onSuccess();
     } catch (err) {
       setError('Failed to add question');
@@ -25,25 +27,70 @@ export default function QuestionBankForm({ onSuccess }) {
   };
 
   return (
-    <div className="form-container">
-      <h3 style={{ marginTop: 0, marginBottom: '1rem', color: '#4f46e5' }}>Add Question</h3>
-      <form onSubmit={handleSubmit}>
-        <div className="form-grid">
-          <input className="form-control" name="topic" placeholder="Topic" value={form.topic} onChange={handleChange} required />
-          <input className="form-control" name="question" placeholder="Question" value={form.question} onChange={handleChange} required style={{ flex: 2 }} />
-          <select className="form-control" name="difficulty" value={form.difficulty} onChange={handleChange} required>
-            <option value="">Difficulty</option>
-            <option value="Easy">Easy</option>
-            <option value="Medium">Medium</option>
-            <option value="Hard">Hard</option>
-          </select>
-          <input className="form-control" name="answer" placeholder="Answer/Key Points" value={form.answer} onChange={handleChange} />
-          <input className="form-control" name="confidence" placeholder="Confidence (1-5)" value={form.confidence} onChange={handleChange} required />
-          <input className="form-control" name="last_revised" type="date" value={form.last_revised} onChange={handleChange} />
-          <button className="btn btn-primary" type="submit">➕ Add</button>
+    <div className="form-collapsible">
+      <div className="form-collapsible-header" onClick={() => setIsOpen(!isOpen)}>
+        <div className="form-collapsible-title">💡 Add Question</div>
+        <div>{isOpen ? '▲' : '▼'}</div>
+      </div>
+      {isOpen && (
+        <div className="form-collapsible-body">
+          <form onSubmit={handleSubmit}>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label required">Topic</label>
+                <input className="form-control" name="topic" placeholder="e.g. Data Structures" value={form.topic} onChange={handleChange} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label required">Difficulty</label>
+                <select className="form-control" name="difficulty" value={form.difficulty} onChange={handleChange} required>
+                  <option value="">Select Difficulty...</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label required">Confidence</label>
+                <select className="form-control" name="confidence" value={form.confidence} onChange={handleChange} required>
+                  <option value="">Select (1-5)...</option>
+                  <option value="1">1 - Needs Review</option>
+                  <option value="2">2 - Basic Understanding</option>
+                  <option value="3">3 - Comfortable</option>
+                  <option value="4">4 - Very Confident</option>
+                  <option value="5">5 - Expert</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label required">Question</label>
+                <textarea className="form-control" name="question" placeholder="The interview question..." value={form.question} onChange={handleChange} required rows={2}></textarea>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Answer / Key Points</label>
+                <textarea className="form-control" name="answer" placeholder="How to solve it..." value={form.answer} onChange={handleChange} rows={3}></textarea>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Last Revised</label>
+                <input className="form-control" name="last_revised" type="date" value={form.last_revised} onChange={handleChange} />
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button className="btn btn-ghost" type="button" onClick={() => setIsOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" type="submit">➕ Add Question</button>
+            </div>
+            {error && <div style={{ color: '#e11d48', marginTop: '1rem', fontWeight: 600 }}>{error}</div>}
+          </form>
         </div>
-        {error && <div style={{ color: '#e11d48', marginTop: '1rem', fontWeight: 600 }}>{error}</div>}
-      </form>
+      )}
     </div>
   );
 }

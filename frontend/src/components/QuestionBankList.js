@@ -151,12 +151,12 @@ export default function QuestionBankList() {
                 <div style={{ marginTop: 'auto', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
                     <span>Confidence</span>
-                    <span>{q.confidence} / 5</span>
+                    <span>{q.confidence || 0} / 5</span>
                   </div>
                   <div className="conf-bar">
                     <div className="conf-fill" style={{ 
-                      width: `${(q.confidence / 5) * 100}%`,
-                      background: q.confidence >= 4 ? 'var(--success)' : q.confidence >= 3 ? 'var(--warning)' : 'var(--danger)'
+                      width: `${((q.confidence || 0) / 5) * 100}%`,
+                      background: (q.confidence || 0) >= 4 ? 'var(--success)' : (q.confidence || 0) >= 3 ? 'var(--warning)' : 'var(--danger)'
                     }} />
                   </div>
                 </div>
