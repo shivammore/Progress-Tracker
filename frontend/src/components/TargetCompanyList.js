@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { fetchTargetCompanies, deleteTargetCompany, updateTargetCompany } from '../api/targetCompanyApi';
 import TargetCompanyForm from './TargetCompanyForm';
 
@@ -74,6 +75,7 @@ const getCompanyStatusBadge = (status) => {
 };
 
 export default function TargetCompanyList() {
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState([]);
   const [editId, setEditId] = useState(null);
   const [filterTier, setFilterTier] = useState('all');
@@ -192,6 +194,11 @@ export default function TargetCompanyList() {
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button className="btn btn-edit" onClick={() => setEditId(c.id)}>✏️ Edit</button>
                     <button className="btn btn-danger" onClick={() => handleDelete(c.id)}>🗑️ Delete</button>
+                    {['applied', 'interviewing', 'offer'].includes((c.status || '').toLowerCase()) ? (
+                      <button className="btn btn-ghost" onClick={() => navigate(`/jobs?company=${encodeURIComponent(c.company)}`)} style={{ color: 'var(--accent)' }}>📂 View App</button>
+                    ) : (
+                      <button className="btn btn-primary" onClick={() => navigate(`/jobs?company=${encodeURIComponent(c.company)}`)} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>➕ Log App</button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>QUICK STATUS:</span>
