@@ -54,11 +54,11 @@ export default function AIAssistant() {
     setIsLoading(true);
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        systemInstruction: "You are an expert technical interviewer and study tutor. Help the user prepare for software engineering and data engineering interviews. Provide concise, accurate, and encouraging responses. When providing code, use markdown code blocks.",
-      });
+      const gatewayUrl = localStorage.getItem('AI_GATEWAY_URL') || 'https://generativelanguage.googleapis.com/v1beta/models';
+      let modelName = localStorage.getItem('AI_MODEL') || 'gemini-1.5-flash';
+      if (modelName === 'gemini-2.5-flash') {
+        modelName = 'gemini-1.5-flash';
+      }
 
       let enrichedPrompt = promptText.trim();
       
@@ -88,20 +88,65 @@ Please customize your tutoring responses to align with these facts where helpful
         }
       }
 
-      // Format previous messages for chat history
-      const history = messages.slice(1).map(msg => ({
-        role: msg.role === 'model' ? 'model' : 'user',
-        parts: [{ text: msg.text }],
-      }));
+      let text = '';
 
-      const chat = model.startChat({ history });
-      const result = await chat.sendMessage(enrichedPrompt);
-      const response = await result.response;
-      const text = response.text();
+      if (/generativelanguage\.googleapis\.com/.test(gatewayUrl)) {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: "You are an expert technical interviewer and study tutor. Help the user prepare for software engineering and data engineering interviews. Provide concise, accurate, and encouraging responses. When providing code, use markdown code blocks.",
+        });
+
+        // Format previous messages for chat history
+        const history = messages.slice(1).map(msg => ({
+          role: msg.role === 'model' ? 'model' : 'user',
+          parts: [{ text: msg.text }],
+        }));
+
+        const chat = model.startChat({ history });
+        const result = await chat.sendMessage(enrichedPrompt);
+        const response = await result.response;
+        text = response.text();
+      } else {
+        // OpenAI-compatible custom gateway integration
+        const url = gatewayUrl.endsWith('/v1/chat/completions') ? gatewayUrl : `${gatewayUrl.replace(/\/$/, '')}/v1/chat/completions`;
+        const messagesPayload = [
+          { 
+            role: 'system', 
+            content: "You are an expert technical interviewer and study tutor. Help the user prepare for software engineering and data engineering interviews. Provide concise, accurate, and encouraging responses. When providing code, use markdown code blocks." 
+          },
+          ...messages.slice(1).map(msg => ({
+            role: msg.role === 'model' ? 'assistant' : 'user',
+            content: msg.text
+          })),
+          { role: 'user', content: enrichedPrompt }
+        ];
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: messagesPayload,
+            temperature: 0.7
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errText}`);
+        }
+
+        const data = await response.json();
+        text = data.choices?.[0]?.message?.content || JSON.stringify(data);
+      }
 
       setMessages(prev => [...prev, { role: 'model', text }]);
     } catch (error) {
-      console.error("Gemini API Error:", error);
+      console.error("AI API Error:", error);
       let errorMessage = "Sorry, I encountered an error communicating with the AI service. ";
       
       if (error.message?.includes('API key not valid')) {

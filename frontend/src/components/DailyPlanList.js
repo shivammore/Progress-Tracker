@@ -46,7 +46,10 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
     try {
       const gatewayUrl = localStorage.getItem('AI_GATEWAY_URL') || '';
       const apiKey = localStorage.getItem('AI_API_KEY');
-      const model = localStorage.getItem('AI_MODEL') || '';
+      let model = localStorage.getItem('AI_MODEL') || 'gemini-1.5-flash';
+      if (model === 'gemini-2.5-flash' || !model) {
+        model = 'gemini-1.5-flash';
+      }
       if (!apiKey) {
         // Save error to backend as well
         const newOutputs = { ...aiOutputs, [index]: '❌ API Key not set in Settings.' };
@@ -331,7 +334,10 @@ export default function DailyPlanList() {
 
     try {
       const gatewayUrl = localStorage.getItem('AI_GATEWAY_URL') || '';
-      const model = localStorage.getItem('AI_MODEL') || 'gemini-2.5-flash';
+      let model = localStorage.getItem('AI_MODEL') || 'gemini-1.5-flash';
+      if (model === 'gemini-2.5-flash') {
+        model = 'gemini-1.5-flash';
+      }
       
       const prompt = `I am preparing for software/data engineering interviews. 
 My focus area for today is '${plan.focus_area}' and my tasks are: 

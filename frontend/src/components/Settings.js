@@ -5,7 +5,7 @@ import API_BASE_URL from '../api/config';
 export default function Settings() {
   const [gatewayUrl, setGatewayUrl] = useState('https://generativelanguage.googleapis.com/v1beta/models');
   const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('gemini-2.5-flash');
+  const [model, setModel] = useState('gemini-1.5-flash');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -14,7 +14,14 @@ export default function Settings() {
     const mdl = localStorage.getItem('AI_MODEL');
     if (url) setGatewayUrl(url);
     if (key) setApiKey(key);
-    if (mdl) setModel(mdl);
+    if (mdl) {
+      if (mdl === 'gemini-2.5-flash') {
+        setModel('gemini-1.5-flash');
+        localStorage.setItem('AI_MODEL', 'gemini-1.5-flash');
+      } else {
+        setModel(mdl);
+      }
+    }
   }, []);
 
   const handleSave = (e) => {
