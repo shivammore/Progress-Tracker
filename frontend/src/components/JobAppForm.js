@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import React, { useState, useEffect } from 'react';
 import { createJobApp } from '../api/jobAppApi';
-import { fetchTargetCompanies, updateTargetCompany } from '../api/targetCompanyApi';
 import { fetchTargetCompanies, updateTargetCompany } from '../api/targetCompanyApi';
 
 export default function JobAppForm({ onSuccess, defaultCompany }) {
@@ -21,17 +19,7 @@ export default function JobAppForm({ onSuccess, defaultCompany }) {
       setForm(prev => ({ ...prev, company: defaultCompany }));
     }
   }, [defaultCompany]);
-  const [targetCompanies, setTargetCompanies] = useState([]);
 
-  useEffect(() => {
-    fetchTargetCompanies().then(res => setTargetCompanies(res.data)).catch(err => console.error("Failed to fetch target companies", err));
-  }, []);
-
-  useEffect(() => {
-    if (defaultCompany) {
-      setForm(prev => ({ ...prev, company: defaultCompany }));
-    }
-  }, [defaultCompany]);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
