@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchQuestions, deleteQuestion, updateQuestion } from '../api/questionBankApi';
 import QuestionBankForm from './QuestionBankForm';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditCardInline({ q, onSave, onCancel }) {
   const [form, setForm] = useState({ ...q });
@@ -77,7 +78,8 @@ export default function QuestionBankList() {
   if (filterDiff !== 'all') filtered = filtered.filter(q => (q.difficulty || '').toLowerCase() === filterDiff.toLowerCase());
 
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <QuestionBankForm onSuccess={loadQuestions} />
 
       {/* Filters Bar */}
@@ -172,6 +174,10 @@ export default function QuestionBankList() {
           <div className="empty-state-text">No questions match your filters.</div>
         </div>
       )}
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

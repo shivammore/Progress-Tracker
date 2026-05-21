@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchMilestones, deleteMilestone, updateMilestone } from '../api/milestoneApi';
 import MilestoneForm from './MilestoneForm';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditMilestoneInline({ milestone, onSave, onCancel }) {
   const [form, setForm] = useState({ ...milestone });
@@ -102,7 +103,8 @@ export default function MilestoneList() {
   });
 
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <MilestoneForm onSuccess={loadMilestones} />
 
       {/* Filters Bar */}
@@ -201,6 +203,10 @@ export default function MilestoneList() {
           <div className="empty-state-text">No project milestones match your filters.</div>
         </div>
       )}
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

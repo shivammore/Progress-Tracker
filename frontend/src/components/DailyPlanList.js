@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { fetchDailyPlans, deleteDailyPlan, updateDailyPlan } from '../api/dailyPlanApi';
+import axios from 'axios';
 import API_BASE_URL from '../api/config';
 import DailyPlanForm from './DailyPlanForm';
 import ReactMarkdown from 'react-markdown';
@@ -40,8 +41,8 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
 
     setLoadingVideo(prev => ({ ...prev, [index]: true }));
     try {
-      const response = await fetch(`${API_BASE_URL}/youtube/search?q=${encodeURIComponent(plan.focus_area + ' ' + taskText)}`);
-      const data = await response.json();
+      const response = await axios.get(`${API_BASE_URL}/youtube/search?q=${encodeURIComponent(plan.focus_area + ' ' + taskText)}`);
+      const data = response.data;
       if (data.videoId) {
         setVideoIds(prev => ({ ...prev, [index]: data.videoId }));
       } else {
@@ -368,12 +369,22 @@ export default function DailyPlanList() {
   const [expandedId, setExpandedId] = useState(null);
   const [filterWeek, setFilterWeek] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterTrack, setFilterTrack] = useState('Default');
   // AI Guide State
   const [aiGuides, setAiGuides] = useState({});
   const [aiLoading, setAiLoading] = useState({});
   const [showAiGuide, setShowAiGuide] = useState({});
 
-  const loadPlans = () => fetchDailyPlans().then(res => setPlans(res.data));
+  const loadPlans = () => fetchDailyPlans().then(res => {
+    const data = res.data;
+    setPlans(data);
+    if (data.length > 0) {
+      const activeTracks = [...new Set(data.map(p => p.track_name || 'Default'))];
+      if (!activeTracks.includes(filterTrack)) {
+        setFilterTrack(activeTracks[0]);
+      }
+    }
+  });
   useEffect(() => { loadPlans(); }, []);
 
   const handleDelete = async (id) => {
@@ -466,11 +477,15 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
     }
   };
 
-  // Get unique weeks for filter
-  const weeks = [...new Set(plans.map(p => p.week))].sort();
+  // Get unique tracks
+  const tracks = [...new Set(plans.map(p => p.track_name || 'Default'))].sort();
+
+  // Get unique weeks for filter (only for the current track)
+  const trackPlans = plans.filter(p => (p.track_name || 'Default') === filterTrack);
+  const weeks = [...new Set(trackPlans.map(p => p.week))].sort();
 
   // Apply filters
-  let filtered = plans;
+  let filtered = trackPlans;
   if (filterWeek !== 'all') filtered = filtered.filter(p => p.week === filterWeek);
   if (filterStatus !== 'all') {
     filtered = filtered.filter(p => {
@@ -490,7 +505,29 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
 
   return (
     <div>
-      <DailyPlanForm onSuccess={loadPlans} />
+      <DailyPlanForm onSuccess={loadPlans} activeTrack={filterTrack} />
+      
+      {/* Track Selector Tabs */}
+      {tracks.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+          {tracks.map(track => (
+            <button
+              key={track}
+              onClick={() => setFilterTrack(track)}
+              className={`btn ${filterTrack === track ? 'btn-primary' : 'btn-ghost'}`}
+              style={{
+                padding: '0.5rem 1rem',
+                fontSize: '0.9rem',
+                borderRadius: 'var(--radius-md)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {track}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Filters & Summary Bar */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem',

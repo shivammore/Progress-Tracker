@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { fetchTargetCompanies, deleteTargetCompany, updateTargetCompany } from '../api/targetCompanyApi';
 import TargetCompanyForm from './TargetCompanyForm';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditCompanyInline({ company, onSave, onCancel }) {
   const [form, setForm] = useState({ ...company });
@@ -106,7 +107,8 @@ export default function TargetCompanyList() {
   if (filterStatus !== 'all') filtered = filtered.filter(c => (c.status || '').toLowerCase() === filterStatus.toLowerCase());
 
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <TargetCompanyForm onSuccess={loadCompanies} />
 
       {/* Filters Bar */}
@@ -229,6 +231,10 @@ export default function TargetCompanyList() {
           <div className="empty-state-text">No target companies match your filters.</div>
         </div>
       )}
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

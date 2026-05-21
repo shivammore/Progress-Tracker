@@ -12,6 +12,7 @@
   --bg-card-hover: #f8fafc;
   --accent: #6366f1;
   --accent-hover: #4f46e5;
+  --accent-dark: #4338ca;
   --accent-light: #e0e7ff;
   --accent-glow: rgba(99, 102, 241, 0.15);
   --text-primary: #0f172a;
@@ -39,6 +40,24 @@
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Dark Theme Overrides */
+[data-theme="dark"] {
+  --bg-dark: #020617;
+  --bg-sidebar: #0f172a;
+  --bg-main: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border: #334155;
+  --accent-glow: rgba(99, 102, 241, 0.3);
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --info-bg: rgba(59, 130, 246, 0.1);
+}
+
 /* Reset & Base */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -50,11 +69,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .App {
   display: flex;
   min-height: 100vh;
+  width: 100%;
   text-align: left;
 }
 
@@ -226,7 +247,7 @@ body {
    ================================================================ */
 .main-content {
   margin-left: 260px;
-  flex: 1;
+  width: calc(100% - 260px);
   min-height: 100vh;
 }
 
@@ -284,8 +305,8 @@ body {
 
 .router-content {
   padding: 2rem 2.5rem;
-  max-width: 1600px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
 }
 
 /* Top Header Bar */
@@ -319,6 +340,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 /* ================================================================
@@ -833,6 +861,26 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  background: var(--bg-main);
+  border-color: var(--text-muted);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+.btn-danger:hover {
+  background: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
 .btn-edit {
   background: #f59e0b;
   color: white;
@@ -1096,17 +1144,48 @@ select.form-control {
 
 @media (max-width: 900px) {
   .mobile-toggle { display: flex; }
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0; }
-  .router-content { padding: 1.25rem; padding-top: 4.5rem; }
-  .section-card { padding: 1.5rem 1rem; }
-  .section-title { font-size: 1.4rem; }
-  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .sidebar { 
+    transform: translateX(-100%); 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+  }
+  .sidebar.open { 
+    transform: translateX(0); 
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
+  .main-content { 
+    margin-left: 0; 
+    width: 100%;
+  }
+  
+  .top-bar {
+    left: 0;
+    width: 100%;
+    padding: 0 1rem;
+    padding-left: 4rem; /* space for toggle */
+  }
+
+  .router-content { padding: 1rem; padding-top: 5rem; }
+  .section-card { padding: 1.25rem 1rem; }
+  .section-title { font-size: 1.3rem; }
+  
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+  .dashboard-grid { grid-template-columns: 1fr; gap: 1rem; }
+  
+  .form-grid { grid-template-columns: 1fr; } /* Stack forms vertically */
+  .kanban-board { flex-direction: column; }
+  .kanban-column { min-width: 100%; }
 }
 
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
+  .action-buttons { flex-direction: column; width: 100%; }
+  .btn { width: 100%; justify-content: center; }
+  
+  /* Make table rows stack for better reading */
+  .styled-table th, .styled-table td { padding: 0.6rem 0.5rem; font-size: 0.8rem; }
+  
+  .search-footer-legend { flex-direction: column; gap: 0.5rem; }
 }
 
 /* Scrollbar */
@@ -1868,6 +1947,37 @@ select.form-control {
   background: var(--bg-card-hover) !important;
   border-color: var(--accent-light) !important;
   color: var(--text-primary) !important;
+}
+
+/* ================================================================
+   SKELETON LOADERS
+   ================================================================ */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-main) 25%, var(--border) 50%, var(--bg-main) 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-text {
+  height: 1rem;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-card {
+  height: 120px;
+  width: 100%;
+  border-radius: var(--radius-md);
+}
+
+.page-transition {
+  animation: fadeIn 0.4s ease forwards;
 }
 
 

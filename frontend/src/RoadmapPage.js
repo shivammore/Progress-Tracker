@@ -350,7 +350,8 @@ const ML_ROADMAP = [
 const TRACKS = [
   { id: 'swe', name: '💻 Software Engineering', data: SWE_ROADMAP },
   { id: 'de', name: '🎛️ Data Engineering', data: DE_ROADMAP },
-  { id: 'ml', name: '🧠 Machine Learning & AI', data: ML_ROADMAP }
+  { id: 'ml', name: '🧠 Machine Learning & AI', data: ML_ROADMAP },
+  { id: 'ai', name: '✨ Custom AI', data: null }
 ];
 
 export default function RoadmapPage() {
@@ -362,11 +363,113 @@ export default function RoadmapPage() {
   const [successMsg, setSuccessMsg] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
-  const currentRoadmap = TRACKS.find(t => t.id === activeTrack).data;
+  const [showMergePrompt, setShowMergePrompt] = useState(false);
+  const [trackNameInput, setTrackNameInput] = useState('');
+  
+  const [aiQuery, setAiQuery] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [customRoadmap, setCustomRoadmap] = useState(null);
+  const [aiError, setAiError] = useState(null);
 
-  const handleLoadRoadmap = async () => {
-    const confirmMessage = `⚠️ WARNING: Loading this roadmap will REPLACE all of your current Daily Plans with this 8-Week (${currentRoadmap.length} Weeks, 56 Days) ${activeTrack.toUpperCase()} curriculum.\n\nDo you want to proceed?`;
-    if (!window.confirm(confirmMessage)) return;
+  const currentRoadmap = activeTrack === 'ai' ? customRoadmap : TRACKS.find(t => t.id === activeTrack).data;
+
+  const generateCustomRoadmap = async () => {
+    const gatewayUrl = localStorage.getItem('AI_GATEWAY_URL') || '';
+    const apiKey = localStorage.getItem('AI_API_KEY');
+    let model = localStorage.getItem('AI_MODEL') || 'gemini-1.5-flash';
+
+    if (!apiKey) {
+      setAiError('Please set your AI API Key in the Settings page first.');
+      return;
+    }
+    if (!aiQuery.trim()) {
+      setAiError('Please enter a role or topic to generate a roadmap for.');
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    setAiError(null);
+    setCustomRoadmap(null);
+
+    const prompt = `I am preparing for an interview or learning journey. My goal role/topic is: "${aiQuery}".
+Please act as an expert technical career coach. Generate a comprehensive 8-week (56-day) curriculum roadmap for this role.
+You MUST output ONLY a raw JSON array (no markdown code blocks, just raw JSON).
+The JSON array must have exactly 8 objects (one for each week).
+Each week object must match this structure exactly:
+{
+  "week": <number>,
+  "focus": "<string>",
+  "summary": "<string>",
+  "days": [
+    {
+      "day": <number 1-7 for this week>,
+      "title": "<string>",
+      "details": "<string>",
+      "tasks": "[ ] Task 1; [ ] Task 2; [ ] Task 3" 
+    }
+  ]
+}`;
+
+    try {
+      let url = '';
+      let headers = {};
+      let body = {};
+      
+      if (/generativelanguage\.googleapis\.com/.test(gatewayUrl)) {
+        url = `${gatewayUrl.replace(/\/$/, '')}/${model}:generateContent?key=${apiKey}`;
+        headers = { 'Content-Type': 'application/json' };
+        body = { contents: [{ parts: [{ text: prompt }] }] };
+      } else {
+        url = gatewayUrl.endsWith('/v1/chat/completions') ? gatewayUrl : `${gatewayUrl.replace(/\/$/, '')}/v1/chat/completions`;
+        headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` };
+        body = {
+          model,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7
+        };
+      }
+
+      const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errText}`);
+      }
+      const data = await response.json();
+      
+      let text = '';
+      if (data.choices && data.choices[0]?.message?.content) {
+        text = data.choices[0].message.content;
+      } else if (data.candidates && data.candidates[0]?.content?.parts) {
+        text = data.candidates[0].content.parts.map(p => p.text).join('\n');
+      } else {
+        text = JSON.stringify(data);
+      }
+
+      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(text);
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("AI did not return a valid JSON array.");
+      
+      setCustomRoadmap(parsed);
+    } catch (e) {
+      console.error(e);
+      setAiError("Failed to generate roadmap: " + e.message);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleLoadRoadmapClick = () => {
+    let defaultTrackName = TRACKS.find(t => t.id === activeTrack).name;
+    if (activeTrack === 'ai' && aiQuery.trim()) {
+      defaultTrackName = `Custom: ${aiQuery.trim()}`;
+    }
+    setTrackNameInput(defaultTrackName);
+    setShowMergePrompt(true);
+  };
+
+  const confirmLoadRoadmap = async (strategy) => {
+    const finalTrackName = trackNameInput.trim() || 'Default';
+    setShowMergePrompt(false);
 
     setIsSeeding(true);
     setSuccessMsg(null);
@@ -396,14 +499,15 @@ export default function RoadmapPage() {
       });
 
       const response = await bulkCreateDailyPlans({
+        track_name: finalTrackName,
         plans: bulkPlans,
-        clear_existing: true
+        merge_strategy: strategy
       });
 
       if (response.data && response.data.ok) {
         setSuccessMsg(`🎉 Successfully loaded all 56 days of the ${activeTrack.toUpperCase()} roadmap into your Daily Plans! Redirecting you now...`);
         setTimeout(() => {
-          navigate('/daily-plans');
+          navigate('/daily');
         }, 2500);
       } else {
         throw new Error("Bulk upload succeeded but returned an invalid status.");
@@ -447,7 +551,45 @@ export default function RoadmapPage() {
         ))}
       </div>
 
-      {/* ACTION CARD: LOADER SETTINGS */}
+      {activeTrack === 'ai' && !customRoadmap && (
+        <div className="card" style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '3rem 2rem', marginBottom: '3rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🤖</div>
+          <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>AI Roadmap Generator</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', maxWidth: '500px', margin: '0 auto 2rem' }}>
+            Tell the AI what role you're aiming for (e.g., "Senior Frontend Dev", "Cloud Architect", "Product Manager") and it will build a custom 56-day syllabus just for you.
+          </p>
+          
+          <div style={{ display: 'flex', gap: '0.5rem', maxWidth: '600px', margin: '0 auto' }}>
+            <input 
+              type="text" 
+              className="form-control" 
+              placeholder="e.g. Full-Stack Developer with Node.js & React..." 
+              value={aiQuery} 
+              onChange={e => setAiQuery(e.target.value)}
+              disabled={isGeneratingAI}
+              style={{ flex: 1, padding: '0.75rem 1rem', fontSize: '1rem' }}
+            />
+            <button 
+              className="btn btn-primary" 
+              onClick={generateCustomRoadmap} 
+              disabled={isGeneratingAI}
+              style={{ padding: '0.75rem 1.5rem', fontSize: '1rem' }}
+            >
+              {isGeneratingAI ? 'Generating... ⏳' : 'Generate ✨'}
+            </button>
+          </div>
+          
+          {aiError && (
+            <div style={{ marginTop: '1.5rem', color: 'var(--danger)', fontSize: '0.9rem', background: 'rgba(239,68,68,0.1)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+              {aiError}
+            </div>
+          )}
+        </div>
+      )}
+
+      {currentRoadmap && (
+        <>
+          {/* ACTION CARD: LOADER SETTINGS */}
       <div className="card" style={{
         background: 'rgba(255, 255, 255, 0.05)',
         border: '2px solid var(--accent-light)',
@@ -497,7 +639,7 @@ export default function RoadmapPage() {
             </div>
 
             <button
-              onClick={handleLoadRoadmap}
+              onClick={handleLoadRoadmapClick}
               disabled={isSeeding}
               className="btn btn-primary"
               style={{
@@ -620,6 +762,76 @@ export default function RoadmapPage() {
           </div>
         ))}
       </div>
+      </>)}
+
+      {showMergePrompt && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+        }}>
+          <div style={{
+            background: 'var(--bg-main)', border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)', padding: '2.5rem', maxWidth: '500px', width: '90%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem', fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span>⚠️</span> Schedule Conflict
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: '1.5' }}>
+              You are about to inject <strong>56 new daily plans</strong> into your timeline. How would you like to handle your existing plans?
+            </p>
+
+            <div style={{ marginBottom: '2rem' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>
+                🏷️ Schedule / Track Name
+              </label>
+              <input 
+                type="text" 
+                className="form-control" 
+                value={trackNameInput} 
+                onChange={(e) => setTrackNameInput(e.target.value)} 
+                style={{ width: '100%', padding: '0.75rem' }}
+                placeholder="e.g. Software Engineering"
+              />
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
+                This lets you toggle between multiple active roadmaps in your Daily Plans view.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+              <button className="btn btn-outline" style={{ justifyContent: 'flex-start', padding: '1rem', textAlign: 'left', height: 'auto' }} onClick={() => confirmLoadRoadmap('replace_future')}>
+                <div>
+                  <strong>🔄 Replace Upcoming (Recommended)</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Deletes future scheduled plans and replaces them with this roadmap starting today. Past plans are kept safe.</div>
+                </div>
+              </button>
+              <button className="btn btn-outline" style={{ justifyContent: 'flex-start', padding: '1rem', textAlign: 'left', height: 'auto' }} onClick={() => confirmLoadRoadmap('append')}>
+                <div>
+                  <strong>➕ Append to End</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Start this roadmap immediately after your last scheduled daily plan.</div>
+                </div>
+              </button>
+              <button className="btn btn-outline" style={{ justifyContent: 'flex-start', padding: '1rem', textAlign: 'left', height: 'auto' }} onClick={() => confirmLoadRoadmap('merge')}>
+                <div>
+                  <strong>🔀 Merge / Overlap</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Keep all existing plans, and layer the new roadmap on top starting today.</div>
+                </div>
+              </button>
+              <button className="btn btn-outline" style={{ justifyContent: 'flex-start', padding: '1rem', textAlign: 'left', height: 'auto', borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={() => confirmLoadRoadmap('clear_all')}>
+                <div>
+                  <strong>🗑️ Clear Everything</strong>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: '0.25rem' }}>Delete ALL past and future daily plans for a fresh start.</div>
+                </div>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setShowMergePrompt(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

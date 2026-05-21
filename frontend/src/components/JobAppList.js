@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchJobApps, deleteJobApp, updateJobApp } from '../api/jobAppApi';
 import JobAppForm from './JobAppForm';
 import JobKanbanView from './JobKanbanView';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditRow({ app, onSave, onCancel }) {
   const [form, setForm] = useState({ ...app });
@@ -76,7 +77,8 @@ export default function JobAppList() {
   });
 
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <JobAppForm onSuccess={loadApps} defaultCompany={initialCompany} />
 
       {/* Filter and Search Bar */}
@@ -202,6 +204,10 @@ export default function JobAppList() {
           </table>
         </div>
       )}
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

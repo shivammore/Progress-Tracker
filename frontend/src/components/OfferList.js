@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchOffers, deleteOffer, updateOffer } from '../api/offerApi';
 import OfferForm from './OfferForm';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditRow({ offer, onSave, onCancel }) {
   const [form, setForm] = useState({ ...offer });
@@ -47,7 +48,8 @@ export default function OfferList() {
     loadOffers();
   };
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <OfferForm onSuccess={loadOffers} />
       <div className="table-responsive">
         <table className="styled-table">
@@ -94,6 +96,10 @@ export default function OfferList() {
           </tbody>
         </table>
       </div>
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

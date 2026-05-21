@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchMockInterviews, deleteMockInterview, updateMockInterview } from '../api/mockInterviewApi';
 import MockInterviewForm from './MockInterviewForm';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditRow({ interview, onSave, onCancel }) {
   const [form, setForm] = useState({ ...interview });
@@ -39,7 +40,8 @@ export default function MockInterviewList() {
     loadInterviews();
   };
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <MockInterviewForm onSuccess={loadInterviews} />
       <div className="table-responsive">
         <table className="styled-table">
@@ -93,6 +95,10 @@ export default function MockInterviewList() {
           </tbody>
         </table>
       </div>
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

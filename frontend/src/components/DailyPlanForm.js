@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createDailyPlan } from '../api/dailyPlanApi';
 
-export default function DailyPlanForm({ onSuccess }) {
+export default function DailyPlanForm({ onSuccess, activeTrack = "Default" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState({
     day: '',
@@ -25,6 +25,7 @@ export default function DailyPlanForm({ onSuccess }) {
     try {
       await createDailyPlan({
         ...form,
+        track_name: activeTrack,
         day: Number(form.day),
         hours_planned: Number(form.hours_planned),
         hours_actual: form.hours_actual ? Number(form.hours_actual) : null

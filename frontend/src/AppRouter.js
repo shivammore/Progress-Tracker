@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from 'react-router';
+import axios from 'axios';
 
 import Dashboard from './components/Dashboard';
 import DailyPlanList from './components/DailyPlanList';
@@ -16,6 +17,13 @@ import AIAssistant from './components/AIAssistant';
 import Settings from './components/Settings';
 import StudyAnalytics from './components/StudyAnalytics';
 import GlobalSearch from './components/GlobalSearch';
+import API_BASE_URL from './api/config';
+
+import { Navigate } from 'react-router';
+import { AuthContext } from './context/AuthContext';
+import Login from './components/Login';
+import Register from './components/Register';
+
 
 const navSections = [
   {
@@ -74,11 +82,12 @@ const routes = [
   { path: '/roadmap', element: <SectionPage title="🗺️ 8-Week Roadmap"><RoadmapPage /></SectionPage> },
   { path: '/ai-assistant', element: <AIAssistant /> },
   { path: '/settings', element: <Settings /> },
+  { path: '*', element: <Navigate to="/" replace /> },
 ];
 
 function SectionPage({ title, children }) {
   return (
-    <div className="section-page">
+    <div className="section-page page-transition">
       <div className="section-card">
         <h2 className="section-title">{title}</h2>
         {children}
@@ -93,13 +102,30 @@ function ScrollToTop() {
   return null;
 }
 
+
 function TopBar() {
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(localStorage.getItem('userName') || 'Shivam More');
-  const [role, setRole] = useState(localStorage.getItem('userRole') || 'Lead Software Engineer');
+  const { user, logout } = React.useContext(AuthContext);
+  const [name, setName] = useState(user ? user.username : 'User');
+  const [role, setRole] = useState(localStorage.getItem('userRole') || 'Software Engineer');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
+
+  useEffect(() => {
+    if (user && user.username !== name) {
+        setName(user.username);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
 
   const handleSave = () => {
-    localStorage.setItem('userName', name);
     localStorage.setItem('userRole', role);
     setIsEditing(false);
   };
@@ -110,11 +136,7 @@ function TopBar() {
   };
 
   const triggerSearch = () => {
-    const event = new KeyboardEvent('keydown', {
-      key: 'k',
-      ctrlKey: true,
-      bubbles: true
-    });
+    const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true });
     window.dispatchEvent(event);
   };
 
@@ -145,13 +167,19 @@ function TopBar() {
       <div className="top-bar-user">
         {isEditing ? (
           <div className="user-edit-form">
-            <input value={name} onChange={e => setName(e.target.value)} className="form-control user-edit-input" placeholder="Name" />
             <input value={role} onChange={e => setRole(e.target.value)} className="form-control user-edit-input" placeholder="Designation" />
             <button onClick={handleSave} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem' }}>Save</button>
-            <button onClick={() => setIsEditing(false)} className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem' }}>Cancel</button>
+            <button onClick={() => setIsEditing(false)} className="btn btn-secondary" style={{ padding: '0.4rem 0.8rem' }}>Cancel</button>
           </div>
         ) : (
           <>
+            <button 
+              onClick={toggleTheme} 
+              style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', cursor: 'pointer', marginRight: '0.5rem', transition: 'transform 0.2s' }}
+              title="Toggle Dark Mode"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
             <div className="top-bar-user-info">
               <div className="top-bar-user-name">{name}</div>
               <div className="top-bar-user-role">{role}</div>
@@ -159,14 +187,31 @@ function TopBar() {
             <div className="sidebar-avatar cursor-pointer" onClick={() => setIsEditing(true)} title="Edit Profile">
               {getInitials(name)}
             </div>
+            <button onClick={logout} className="btn btn-danger" style={{ marginLeft: '1rem', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+              Logout
+            </button>
           </>
         )}
       </div>
     </div>
   );
 }
-
 function Sidebar({ open, onClose }) {
+  const [badges, setBadges] = useState({ reminders: 0, jobs: 0, questions: 0 });
+
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/analytics/summary`)
+      .then(res => {
+        const data = res.data;
+        setBadges({
+          reminders: data.upcoming_reminders ? data.upcoming_reminders.length : 0,
+          jobs: data.counts ? data.counts.total_apps : 0,
+          questions: 0 // Will implement real spaced repetition badge later
+        });
+      })
+      .catch(e => console.error(e));
+  }, []);
+
   return (
     <aside className={`sidebar ${open ? 'open' : ''}`}>
       <div className="sidebar-header">
@@ -192,6 +237,8 @@ function Sidebar({ open, onClose }) {
               >
                 <span className="nav-link-icon">{item.icon}</span>
                 {item.label}
+                {item.path === '/reminders' && badges.reminders > 0 && <span className="nav-link-badge" style={{background: 'var(--danger)', color: 'white'}}>{badges.reminders}</span>}
+                {item.path === '/questions' && badges.questions > 0 && <span className="nav-link-badge" style={{background: 'var(--warning)', color: 'black'}}>{badges.questions}</span>}
               </NavLink>
             ))}
           </React.Fragment>
@@ -201,11 +248,12 @@ function Sidebar({ open, onClose }) {
   );
 }
 
-export default function AppRouter() {
+
+function MainLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <Router>
+    <>
       <ScrollToTop />
       <GlobalSearch />
       <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -215,13 +263,32 @@ export default function AppRouter() {
       <div className="main-content">
         <TopBar />
         <div className="router-content">
-          <Routes>
-            {routes.map(r => (
-              <Route key={r.path} path={r.path} element={r.element} />
-            ))}
-          </Routes>
+          {children}
         </div>
       </div>
+    </>
+  );
+}
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = React.useContext(AuthContext);
+  
+  if (loading) return null; // Or a loading spinner
+  if (!user) return <Navigate to="/login" replace />;
+  
+  return <MainLayout>{children}</MainLayout>;
+}
+
+export default function AppRouter() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        {routes.map(r => (
+          <Route key={r.path} path={r.path} element={<ProtectedRoute>{r.element}</ProtectedRoute>} />
+        ))}
+      </Routes>
     </Router>
   );
 }

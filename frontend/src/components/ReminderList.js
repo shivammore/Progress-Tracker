@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchReminders, deleteReminder, updateReminder } from '../api/reminderApi';
 import ReminderForm from './ReminderForm';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditRow({ reminder, onSave, onCancel }) {
   const [form, setForm] = useState({ ...reminder });
@@ -154,7 +155,8 @@ export default function ReminderList() {
   };
 
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <ReminderForm onSuccess={loadReminders} />
       
       <div style={{ marginTop: '1.5rem' }}>
@@ -170,6 +172,10 @@ export default function ReminderList() {
           </div>
         )}
       </div>
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

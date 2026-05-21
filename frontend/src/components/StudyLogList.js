@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchStudyLogs, deleteStudyLog, updateStudyLog } from '../api/studyLogApi';
 import StudyLogForm from './StudyLogForm';
+import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditRow({ log, onSave, onCancel }) {
   const [form, setForm] = useState({ ...log });
@@ -59,7 +60,8 @@ export default function StudyLogList() {
   });
 
   return (
-    <div>
+    <div className="dashboard-grid">
+      <div className="dp-left-col">
       <StudyLogForm onSuccess={loadLogs} defaultTopic={initialTopic} defaultDate={initialDate} />
 
       {/* Filter and Search Bar */}
@@ -136,6 +138,10 @@ export default function StudyLogList() {
           </tbody>
         </table>
       </div>
+    </div>
+
+      <RightSidebarWidgets />
+
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import axios from 'axios';
 import API_BASE_URL from '../api/config';
 
 export default function Dashboard() {
@@ -8,10 +9,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/analytics/summary`)
-      .then(res => res.json())
-      .then(data => {
-        setStats(data);
+    axios.get(`${API_BASE_URL}/analytics/summary`)
+      .then(res => {
+        setStats(res.data);
         setError(null);
       })
       .catch((err) => {
