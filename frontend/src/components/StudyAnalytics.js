@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchStudyLogs } from '../api/studyLogApi';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const getHeatmapDays = () => {
   const days = [];
@@ -55,6 +57,9 @@ export default function StudyAnalytics() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [hoveredDay, setHoveredDay] = useState(null);
+  const [aiReview, setAiReview] = useState(null);
+  const [loadingAiReview, setLoadingAiReview] = useState(false);
+
 
   useEffect(() => {
     fetchStudyLogs()
@@ -170,6 +175,48 @@ export default function StudyAnalytics() {
     return 'heatmap-cell level-4';
   };
 
+  const generateWeeklyReview = async () => {
+    setLoadingAiReview(true);
+    try {
+      const gatewayUrl = localStorage.getItem('AI_GATEWAY_URL') || '';
+      const apiKey = localStorage.getItem('AI_API_KEY');
+      let model = localStorage.getItem('AI_MODEL') || 'gemini-1.5-flash';
+      if (model === 'gemini-2.5-flash') model = 'gemini-1.5-flash';
+      if (!apiKey) { alert('API Key not set.'); return; }
+
+      const last7DaysLogs = logs.filter(l => new Date(l.date) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
+      const hours = last7DaysLogs.reduce((s, l) => s + (l.hours || 0), 0);
+      const topics = [...new Set(last7DaysLogs.map(l => l.topic))].join(', ');
+      
+      const prompt = `As an AI tutor, generate a brief Weekly Review (2-3 short paragraphs) for the user's study progress.
+In the last 7 days, they studied ${hours} hours across topics: ${topics}.
+Give encouraging feedback and one actionable tip for next week.`;
+
+      let url, headers, body;
+      if (/generativelanguage\.googleapis\.com/.test(gatewayUrl)) {
+        url = `${gatewayUrl.replace(/\/$/, '')}/${model}:generateContent?key=${apiKey}`;
+        headers = { 'Content-Type': 'application/json' };
+        body = { contents: [{ parts: [{ text: prompt }] }] };
+      } else {
+        url = gatewayUrl.endsWith('/v1/chat/completions') ? gatewayUrl : `${gatewayUrl.replace(/\/$/, '')}/v1/chat/completions`;
+        headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
+        body = { model, messages: [{ role: 'user', content: prompt }], temperature: 0.7 };
+      }
+
+      const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+      const data = await response.json();
+      let text = '';
+      if (data.choices?.[0]?.message?.content) text = data.choices[0].message.content;
+      else if (data.candidates?.[0]?.content?.parts) text = data.candidates[0].content.parts.map(p => p.text).join('\n');
+      setAiReview(text);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to generate review');
+    } finally {
+      setLoadingAiReview(false);
+    }
+  };
+
   return (
     <div className="section-page">
       {/* Overview Cards */}
@@ -210,12 +257,28 @@ export default function StudyAnalytics() {
 
       {/* GitHub Heatmap Calendar */}
       <div className="section-card" style={{ overflow: 'hidden' }}>
-        <h3 className="section-title">
-          <span className="section-title-emoji">📅</span> 6-Month Study Calendar
-        </h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-          Visualizing your daily study efforts. Darker cells represent more hours studied.
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div>
+            <h3 className="section-title" style={{ marginBottom: 0 }}>
+              <span className="section-title-emoji">📅</span> 6-Month Study Calendar
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+              Visualizing your daily study efforts. Darker cells represent more hours studied.
+            </p>
+          </div>
+          <button className="btn btn-primary" onClick={generateWeeklyReview} disabled={loadingAiReview}>
+            {loadingAiReview ? '⏳ Generating...' : '🤖 Generate AI Weekly Review'}
+          </button>
+        </div>
+
+        {aiReview && (
+          <div style={{ background: 'var(--bg-main)', border: '1px solid var(--accent)', borderRadius: 'var(--radius-md)', padding: '1.5rem', marginBottom: '1.5rem' }}>
+            <h4 style={{ color: 'var(--accent)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>✨ AI Weekly Review</h4>
+            <div className="markdown-body" style={{ fontSize: '0.9rem' }}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiReview}</ReactMarkdown>
+            </div>
+          </div>
+        )}
 
         <div className="heatmap-wrapper">
           {/* Months header labels */}

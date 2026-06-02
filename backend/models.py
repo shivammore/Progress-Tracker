@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Date, Float, Boolean, Text, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, Date, Float, Boolean, Text, ForeignKey, func
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 import os
 
@@ -105,15 +105,22 @@ class ProjectMilestone(Base):
     github_url = Column(String)
     notes = Column(Text)
 
-# Question Bank
+# Flashcard / Question Bank
 class QuestionBank(Base):
     __tablename__ = "question_bank"
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     topic = Column(String)
-    question = Column(Text)
-    difficulty = Column(String)
+    question = Column(String)
     answer = Column(Text)
+    difficulty = Column(String)
+    
+    # SRS Fields
+    next_review_date = Column(Date, default=func.current_date())
+    interval = Column(Integer, default=0) # Days until next review
+    repetition = Column(Integer, default=0) # Number of successful reviews
+    easiness_factor = Column(Float, default=2.5)
+
     confidence = Column(Integer)
     last_revised = Column(Date)
 
@@ -154,7 +161,17 @@ class TargetCompany(Base):
     referral_contact = Column(String)
     status = Column(String)
 
-# Analytics (optional, for future expansion)
+# Goal
+class Goal(Base):
+    __tablename__ = "goals"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String)
+    description = Column(Text)
+    target_date = Column(Date)
+    status = Column(String)
+    progress = Column(Integer) # Percentage 0-100
+    notes = Column(Text)
 
 # Create all tables
 Base.metadata.create_all(bind=engine)

@@ -8,6 +8,7 @@ import JobAppList from './components/JobAppList';
 import StudyLogList from './components/StudyLogList';
 import MockInterviewList from './components/MockInterviewList';
 import MilestoneList from './components/MilestoneList';
+import GoalList from './components/GoalList';
 import QuestionBankList from './components/QuestionBankList';
 import OfferList from './components/OfferList';
 import ReminderList from './components/ReminderList';
@@ -35,6 +36,7 @@ const navSections = [
   {
     label: 'Planning',
     items: [
+      { path: '/goals', icon: '🎯', label: 'Long-Term Goals' },
       { path: '/daily', icon: '📅', label: 'Daily Plans' },
       { path: '/roadmap', icon: '🗺️', label: 'Roadmap' },
       { path: '/reminders', icon: '🔔', label: 'Reminders' },
@@ -69,6 +71,7 @@ const navSections = [
 
 const routes = [
   { path: '/', element: <Dashboard /> },
+  { path: '/goals', element: <SectionPage title="🎯 Long-Term Goals"><GoalList /></SectionPage> },
   { path: '/daily', element: <SectionPage title="📅 Daily Plans"><DailyPlanList /></SectionPage> },
   { path: '/jobs', element: <SectionPage title="🏢 Job Applications"><JobAppList /></SectionPage> },
   { path: '/study', element: <SectionPage title="📚 Study Logs"><StudyLogList /></SectionPage> },

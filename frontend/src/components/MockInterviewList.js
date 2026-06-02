@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { fetchMockInterviews, deleteMockInterview, updateMockInterview } from '../api/mockInterviewApi';
 import MockInterviewForm from './MockInterviewForm';
+import MockInterviewChat from './MockInterviewChat';
 import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditRow({ interview, onSave, onCancel }) {
@@ -24,6 +25,7 @@ function EditRow({ interview, onSave, onCancel }) {
 export default function MockInterviewList() {
   const [interviews, setInterviews] = useState([]);
   const [editId, setEditId] = useState(null);
+  const [showAIInterview, setShowAIInterview] = useState(false);
   const loadInterviews = () => fetchMockInterviews().then(res => setInterviews(res.data));
   useEffect(() => { loadInterviews(); }, []);
   const handleDelete = async (id) => {
@@ -42,6 +44,46 @@ export default function MockInterviewList() {
   return (
     <div className="dashboard-grid">
       <div className="dp-left-col">
+      {/* AI Mock Interview Launch Button */}
+      <div
+        style={{
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(168,85,247,0.12) 100%)',
+          border: '1px solid rgba(99,102,241,0.3)',
+          borderRadius: '1rem',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '0.25rem' }}>
+            🎤 AI Mock Interview
+          </div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+            Practice with an AI interviewer — get scored and receive instant feedback
+          </div>
+        </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowAIInterview(true)}
+          style={{
+            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+            padding: '0.7rem 1.5rem',
+            borderRadius: '0.75rem',
+            fontWeight: 700,
+            fontSize: '0.95rem',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 4px 15px rgba(99, 102, 241, 0.3)',
+          }}
+        >
+          🚀 Start AI Interview
+        </button>
+      </div>
+
       <MockInterviewForm onSuccess={loadInterviews} />
       <div className="table-responsive">
         <table className="styled-table">
@@ -98,6 +140,14 @@ export default function MockInterviewList() {
     </div>
 
       <RightSidebarWidgets />
+
+      {/* AI Mock Interview Modal */}
+      {showAIInterview && (
+        <MockInterviewChat
+          onClose={() => setShowAIInterview(false)}
+          onSaveComplete={loadInterviews}
+        />
+      )}
 
     </div>
   );

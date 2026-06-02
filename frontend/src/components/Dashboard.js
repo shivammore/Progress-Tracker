@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import axios from 'axios';
 import API_BASE_URL from '../api/config';
+import FeynmanSimulator from './FeynmanSimulator';
+import TechSnacks from './TechSnacks';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
+  const [showFeynman, setShowFeynman] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export default function Dashboard() {
     );
   }
 
-  const { counts, upcoming_plans, questions_by_topic, upcoming_reminders, recent_activity, current_streak, study_by_week, app_pipeline } = stats;
+  const { counts, upcoming_plans, questions_by_topic, upcoming_reminders, recent_activity, current_streak, study_recommendations, gamification } = stats;
 
   const totalPlans = counts.total_plans || 0;
   const dailyDone = counts.completed_plans || 0;
@@ -101,19 +104,49 @@ export default function Dashboard() {
 
   return (
     <div className="section-page">
-      {/* Welcome Banner */}
       <div className="welcome-banner" style={{
         background: 'linear-gradient(135deg, var(--accent-dark), var(--accent))',
         color: 'white', padding: '2rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.5rem',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'var(--shadow-md)'
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: 'var(--shadow-md)', flexWrap: 'wrap', gap: '1rem'
       }}>
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>{greeting}, Engineer 👋</h2>
           <p style={{ margin: 0, opacity: 0.9, fontSize: '0.95rem' }}>Here's your interview prep status at a glance.</p>
         </div>
-        <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.2)', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)' }}>
-          <div style={{ fontSize: '2rem', fontWeight: 800 }}>{current_streak} 🔥</div>
-          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Day Streak</div>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          {/* Level Progress */}
+          {gamification && (
+            <div style={{ background: 'rgba(255,255,255,0.15)', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', minWidth: '200px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Level {gamification.level} 🏆</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{gamification.total_xp} XP</span>
+              </div>
+              <div style={{ height: '6px', background: 'rgba(0,0,0,0.3)', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ 
+                  width: `${Math.max(0, Math.min(100, ((gamification.total_xp - gamification.current_level_xp) / (gamification.next_level_xp - gamification.current_level_xp)) * 100))}%`, 
+                  height: '100%', background: 'white', borderRadius: '3px' 
+                }} />
+              </div>
+              <div style={{ fontSize: '0.7rem', opacity: 0.8, marginTop: '0.4rem', textAlign: 'right' }}>
+                {gamification.next_level_xp - gamification.total_xp} XP to Level {gamification.level + 1}
+              </div>
+            </div>
+          )}
+
+          {/* Streak */}
+          <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.2)', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{current_streak} 🔥</div>
+            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Day Streak</div>
+          </div>
+          
+          <button 
+            className="btn btn-primary" 
+            style={{ background: 'white', color: 'var(--accent)', fontWeight: 800, padding: '1rem 1.5rem', border: 'none', boxShadow: 'var(--shadow-sm)' }}
+            onClick={() => setShowFeynman(true)}
+          >
+            🧠 Feynman Simulator
+          </button>
         </div>
       </div>
 
@@ -162,6 +195,33 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Smart Study Recommendations */}
+          {study_recommendations && study_recommendations.length > 0 && (
+            <div className="section-card" style={{ marginBottom: 0, border: '2px solid var(--accent)' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🧠 What to Study Next
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {study_recommendations.map((rec, i) => (
+                  <div key={i} style={{ 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    padding: '0.75rem 1rem', background: 'var(--bg-main)', 
+                    borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' 
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>{rec.topic}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Low confidence</span>
+                    </div>
+                    <button className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
+                      onClick={() => navigate(`/questions?topic=${encodeURIComponent(rec.topic)}`)}>
+                      Practice
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Activity Feed */}
           <div className="section-card" style={{ marginBottom: 0, flex: 1 }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-primary)' }}>
@@ -190,6 +250,7 @@ export default function Dashboard() {
         {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
+          <TechSnacks />
           {/* Upcoming Reminders */}
           <div className="section-card" style={{ marginBottom: 0 }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-primary)' }}>
@@ -235,6 +296,7 @@ export default function Dashboard() {
         </div>
 
       </div>
+      {showFeynman && <FeynmanSimulator onClose={() => setShowFeynman(false)} />}
     </div>
   );
 }

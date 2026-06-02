@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, APIRouter
 from sqlalchemy.orm import Session
 from models import (
     get_db, DailyPlan, JobApplication, StudyLog, MockInterview,
-    ProjectMilestone, QuestionBank, Offer, Reminder, TargetCompany
+    ProjectMilestone, QuestionBank, Offer, Reminder, TargetCompany, Goal
 )
 from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
@@ -60,6 +60,19 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
 # ============================================================
 # Pydantic Schemas
 # ============================================================
+
+# --- Goal ---
+class GoalCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    target_date: Optional[date] = None
+    status: str = "In Progress"
+    progress: int = 0
+    notes: Optional[str] = None
+
+class GoalOut(GoalCreate):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
 
 # --- DailyPlan ---
 class DailyPlanCreate(BaseModel):
@@ -162,6 +175,10 @@ class QuestionBankCreate(BaseModel):
     answer: Optional[str] = None
     confidence: Optional[int] = Field(default=None, ge=0, le=100)
     last_revised: Optional[date] = None
+    next_review_date: Optional[date] = None
+    interval: Optional[int] = 0
+    repetition: Optional[int] = 0
+    easiness_factor: Optional[float] = 2.5
 
 class QuestionBankOut(QuestionBankCreate):
     id: int
@@ -480,20 +497,60 @@ def get_question(question_id: int, db: Session = Depends(get_db), current_user: 
         raise HTTPException(status_code=404, detail="Question not found")
     return question
 
-@router.put("/questions/{question_id}", response_model=QuestionBankOut)
-def update_question(question_id: int, question: QuestionBankCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_question = db.query(QuestionBank).filter(QuestionBank.user_id == current_user.id, QuestionBank.user_id == current_user.id).filter(QuestionBank.id == question_id).first()
-    if not db_question:
+@router.put("/questions/{q_id}", response_model=QuestionBankOut)
+def update_question(q_id: int, q: QuestionBankCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_q = db.query(QuestionBank).filter(QuestionBank.id == q_id, QuestionBank.user_id == current_user.id).first()
+    if not db_q:
         raise HTTPException(status_code=404, detail="Question not found")
-    for k, v in question.model_dump().items():
-        setattr(db_question, k, v)
+    for k, v in q.model_dump(exclude_unset=True).items():
+        setattr(db_q, k, v)
     db.commit()
-    db.refresh(db_question)
-    return db_question
+    db.refresh(db_q)
+    return db_q
 
-@router.delete("/questions/{question_id}")
-def delete_question(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_question = db.query(QuestionBank).filter(QuestionBank.user_id == current_user.id, QuestionBank.user_id == current_user.id).filter(QuestionBank.id == question_id).first()
+class SRSReviewInput(BaseModel):
+    grade: int = Field(..., ge=0, le=5)
+
+@router.post("/questions/{q_id}/review", response_model=QuestionBankOut)
+def review_question_srs(q_id: int, review: SRSReviewInput, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_q = db.query(QuestionBank).filter(QuestionBank.id == q_id, QuestionBank.user_id == current_user.id).first()
+    if not db_q:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    # SuperMemo-2 Algorithm (SM-2)
+    grade = review.grade
+    
+    # Initialize fields if None
+    if db_q.repetition is None: db_q.repetition = 0
+    if db_q.interval is None: db_q.interval = 0
+    if db_q.easiness_factor is None: db_q.easiness_factor = 2.5
+
+    if grade >= 3:
+        if db_q.repetition == 0:
+            db_q.interval = 1
+        elif db_q.repetition == 1:
+            db_q.interval = 6
+        else:
+            db_q.interval = max(1, round(db_q.interval * db_q.easiness_factor))
+        db_q.repetition += 1
+    else:
+        db_q.repetition = 0
+        db_q.interval = 1
+
+    db_q.easiness_factor = db_q.easiness_factor + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))
+    if db_q.easiness_factor < 1.3:
+        db_q.easiness_factor = 1.3
+        
+    db_q.next_review_date = date.today() + timedelta(days=db_q.interval)
+    db_q.last_revised = date.today()
+
+    db.commit()
+    db.refresh(db_q)
+    return db_q
+
+@router.delete("/questions/{q_id}")
+def delete_question(q_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_question = db.query(QuestionBank).filter(QuestionBank.user_id == current_user.id, QuestionBank.id == q_id).first()
     if not db_question:
         raise HTTPException(status_code=404, detail="Question not found")
     db.delete(db_question)
@@ -631,6 +688,48 @@ def delete_target_company(tc_id: int, db: Session = Depends(get_db), current_use
 
 
 # ============================================================
+# CRUD Endpoints — Goal
+# ============================================================
+@router.post("/goals/", response_model=GoalOut)
+def create_goal(goal: GoalCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_goal = Goal(**goal.model_dump(), user_id=current_user.id)
+    db.add(db_goal)
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal
+
+@router.get("/goals/", response_model=List[GoalOut])
+def get_goals(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return db.query(Goal).filter(Goal.user_id == current_user.id).offset(skip).limit(limit).all()
+
+@router.get("/goals/{goal_id}", response_model=GoalOut)
+def get_goal(goal_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    goal = db.query(Goal).filter(Goal.user_id == current_user.id).filter(Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    return goal
+
+@router.put("/goals/{goal_id}", response_model=GoalOut)
+def update_goal(goal_id: int, goal: GoalCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_goal = db.query(Goal).filter(Goal.user_id == current_user.id).filter(Goal.id == goal_id).first()
+    if not db_goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    for k, v in goal.model_dump().items():
+        setattr(db_goal, k, v)
+    db.commit()
+    db.refresh(db_goal)
+    return db_goal
+
+@router.delete("/goals/{goal_id}")
+def delete_goal(goal_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_goal = db.query(Goal).filter(Goal.user_id == current_user.id).filter(Goal.id == goal_id).first()
+    if not db_goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    db.delete(db_goal)
+    db.commit()
+    return {"ok": True}
+
+# ============================================================
 # Analytics Endpoint
 # ============================================================
 @router.get("/analytics/summary")
@@ -712,6 +811,20 @@ def get_analytics_summary(db: Session = Depends(get_db), current_user: User = De
         current_streak += 1
         check_date -= timedelta(days=1)
         
+    # 9. Smart Study Recommendations (Topics with lowest confidence)
+    low_confidence_topics = db.query(
+        QuestionBank.topic, func.avg(QuestionBank.confidence)
+    ).group_by(QuestionBank.topic).order_by(func.avg(QuestionBank.confidence).asc()).limit(3).all()
+    study_recommendations = [{"topic": row[0], "avg_confidence": float(row[1] or 0)} for row in low_confidence_topics if row[1] is not None and row[1] < 4.0]
+
+    # 10. Gamification & XP
+    import math
+    total_hours = db.query(func.sum(StudyLog.hours)).filter(StudyLog.user_id == current_user.id).scalar() or 0
+    total_xp = (completed_plans * 50) + (total_hours * 20) + (total_mocks * 100)
+    level = math.floor(math.sqrt(total_xp / 50)) + 1
+    current_level_xp = ((level - 1) ** 2) * 50
+    next_level_xp = (level ** 2) * 50
+
     return {
         "counts": {
             "total_plans": total_plans,
@@ -735,7 +848,14 @@ def get_analytics_summary(db: Session = Depends(get_db), current_user: User = De
             for r in upcoming_reminders
         ],
         "recent_activity": recent_activity,
-        "current_streak": current_streak
+        "current_streak": current_streak,
+        "study_recommendations": study_recommendations,
+        "gamification": {
+            "total_xp": int(total_xp),
+            "level": int(level),
+            "next_level_xp": int(next_level_xp),
+            "current_level_xp": int(current_level_xp)
+        }
     }
 
 

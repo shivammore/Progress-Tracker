@@ -6,6 +6,9 @@ import API_BASE_URL from '../api/config';
 import DailyPlanForm from './DailyPlanForm';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import QuizModal from './QuizModal';
+import PomodoroTimer from './PomodoroTimer';
+import MindMapViewer from './MindMapViewer';
 
 const getDailyPlanStatusBadge = (status) => {
   const s = (status || '').toLowerCase();
@@ -374,6 +377,9 @@ export default function DailyPlanList() {
   const [aiGuides, setAiGuides] = useState({});
   const [aiLoading, setAiLoading] = useState({});
   const [showAiGuide, setShowAiGuide] = useState({});
+  const [activeQuizPlan, setActiveQuizPlan] = useState(null);
+  const [activeTimerPlan, setActiveTimerPlan] = useState(null);
+  const [activeMindMapTopic, setActiveMindMapTopic] = useState(null);
 
   const loadPlans = () => fetchDailyPlans().then(res => {
     const data = res.data;
@@ -642,6 +648,8 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
 
                   {/* Action Buttons */}
                   <div className="dp-actions">
+                    <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setActiveTimerPlan(plan); }}>⏱️ Focus Timer</button>
+                    <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setActiveQuizPlan(plan); }}>🧪 Take Quiz</button>
                     <button className="btn btn-edit" onClick={(e) => { e.stopPropagation(); setEditId(plan.id); }}>✏️ Edit</button>
                     <button className="btn btn-danger" onClick={(e) => { e.stopPropagation(); handleDelete(plan.id); }}>🗑️ Delete</button>
                     {!(plan.status || '').toLowerCase().includes('done') && (
@@ -656,6 +664,7 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
                     ) : (
                       <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); generateGuide(plan); setShowAiGuide(prev => ({ ...prev, [plan.id]: true })); }} disabled={aiLoading[plan.id]}>🤖 Generate Study Guide</button>
                     )}
+                    <button className="btn btn-ghost" onClick={(e) => { e.stopPropagation(); setActiveMindMapTopic(plan.focus_area); }}>🗺️ AI Mind Map</button>
                   </div>
                 </div>
               )}
@@ -677,6 +686,34 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
           <div className="empty-state-text">No daily plans match your filters.</div>
           <div className="empty-state-sub">Try adjusting the week or status filter above.</div>
         </div>
+      )}
+
+      {activeQuizPlan && (
+        <QuizModal 
+          plan={activeQuizPlan} 
+          onClose={() => setActiveQuizPlan(null)} 
+          onSaveScores={loadPlans}
+        />
+      )}
+
+      {activeMindMapTopic && (
+        <MindMapViewer 
+          topic={activeMindMapTopic}
+          onClose={() => setActiveMindMapTopic(null)}
+        />
+      )}
+
+      {activeTimerPlan && (
+        <PomodoroTimer 
+          topic={activeTimerPlan.focus_area}
+          onSessionComplete={async (hours) => {
+            const currentActual = parseFloat(activeTimerPlan.hours_actual) || 0;
+            const updated = { ...activeTimerPlan, hours_actual: (currentActual + hours).toFixed(2) };
+            await updateDailyPlan(activeTimerPlan.id, updated);
+            loadPlans();
+          }}
+          onClose={() => setActiveTimerPlan(null)}
+        />
       )}
     </div>
   );
