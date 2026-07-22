@@ -9,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
   const { login } = useContext(AuthContext);
@@ -16,12 +17,17 @@ export default function Login() {
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-      setMousePosition({
-        x: e.clientX,
-        y: e.clientY
-      });
+      setMousePosition({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener('mousemove', handleMouseMove);
+    
+    // Load remembered username
+    const savedUsername = localStorage.getItem('remembered_username');
+    if (savedUsername) {
+      setUsername(savedUsername);
+      setRememberMe(true);
+    }
+    
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
@@ -37,6 +43,12 @@ export default function Login() {
       const res = await axios.post(`${API_BASE_URL}/auth/login`, formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
+      
+      if (rememberMe) {
+        localStorage.setItem('remembered_username', username);
+      } else {
+        localStorage.removeItem('remembered_username');
+      }
       
       login(username, res.data.access_token);
       navigate('/');
@@ -142,6 +154,16 @@ export default function Login() {
               onFocus={(e) => e.target.style.border = '1px solid #a855f7'}
               onBlur={(e) => e.target.style.border = '1px solid rgba(255, 255, 255, 0.1)'}
             />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '-0.5rem' }}>
+            <input 
+              type="checkbox" 
+              id="rememberMe" 
+              checked={rememberMe} 
+              onChange={e => setRememberMe(e.target.checked)} 
+              style={{ accentColor: '#a855f7', width: '16px', height: '16px', cursor: 'pointer' }}
+            />
+            <label htmlFor="rememberMe" style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', cursor: 'pointer' }}>Remember me</label>
           </div>
           <button 
             type="submit" 

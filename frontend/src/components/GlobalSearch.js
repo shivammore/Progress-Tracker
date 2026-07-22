@@ -22,11 +22,31 @@ const NAVIGATION_ITEMS = [
   { label: '⚙️ Go to Settings', path: '/settings', category: 'Navigation' },
 ];
 
-export default function GlobalSearch() {
+const ACTION_COMMANDS = [
+  { label: '⏱️ Start Pomodoro Timer', action: 'START_TIMER', category: 'Actions' },
+  { label: '📝 Log Study Session', path: '/study', category: 'Actions' },
+  { label: '🎲 Generate Challenge', path: '/ai-assistant', category: 'Actions' },
+];
+
+// Simple cache for API results
+const dataCache = {
+  jobApps: null,
+  targets: null,
+  studyLogs: null,
+  questions: null,
+  milestones: null,
+  lastFetch: 0,
+};
+
+export default function GlobalSearch({ onStartTimer }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [results, setResults] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('recent_global_searches')) || []; } catch { return []; }
+  });
   
   // Data indices
   const [jobApps, setJobApps] = useState([]);
@@ -60,6 +80,7 @@ export default function GlobalSearch() {
 
     // Reset state
     setQuery('');
+    setDebouncedQuery('');
     setSelectedIndex(0);
 
     // Focus input
@@ -67,27 +88,63 @@ export default function GlobalSearch() {
       if (inputRef.current) inputRef.current.focus();
     }, 100);
 
-    // Fetch asynchronously
-    fetchJobApps().then((res) => setJobApps(res.data)).catch(() => {});
-    fetchTargetCompanies().then((res) => setTargets(res.data)).catch(() => {});
-    fetchStudyLogs().then((res) => setStudyLogs(res.data)).catch(() => {});
-    fetchQuestions().then((res) => setQuestions(res.data)).catch(() => {});
-    fetchMilestones().then((res) => setMilestones(res.data)).catch(() => {});
+    // Fetch asynchronously (with 5 min cache)
+    const now = Date.now();
+    if (now - dataCache.lastFetch > 5 * 60 * 1000) {
+      Promise.allSettled([
+        fetchJobApps().then((res) => { setJobApps(res.data); dataCache.jobApps = res.data; }),
+        fetchTargetCompanies().then((res) => { setTargets(res.data); dataCache.targets = res.data; }),
+        fetchStudyLogs().then((res) => { setStudyLogs(res.data); dataCache.studyLogs = res.data; }),
+        fetchQuestions().then((res) => { setQuestions(res.data); dataCache.questions = res.data; }),
+        fetchMilestones().then((res) => { setMilestones(res.data); dataCache.milestones = res.data; }),
+      ]).then(() => {
+        dataCache.lastFetch = now;
+      });
+    } else {
+      setJobApps(dataCache.jobApps || []);
+      setTargets(dataCache.targets || []);
+      setStudyLogs(dataCache.studyLogs || []);
+      setQuestions(dataCache.questions || []);
+      setMilestones(dataCache.milestones || []);
+    }
   }, [isOpen]);
 
-  // 3. Perform search matching when query changes
+  // Debounce query
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 150);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  // 3. Perform search matching when debounced query changes
   useEffect(() => {
     if (!isOpen) return;
-    const q = query.toLowerCase().trim();
+    const q = debouncedQuery.toLowerCase().trim();
 
-    // Default: Show all navigation items
+    // Default: Show recent searches + navigation items
     if (!q) {
-      setResults(NAVIGATION_ITEMS);
+      const defaultItems = [
+        ...recentSearches.map(r => ({ ...r, category: 'Recent' })),
+        ...ACTION_COMMANDS,
+        ...NAVIGATION_ITEMS
+      ];
+      // Filter out duplicates based on label
+      const seen = new Set();
+      const unique = defaultItems.filter(item => {
+        if (seen.has(item.label)) return false;
+        seen.add(item.label);
+        return true;
+      });
+      setResults(unique.slice(0, 15));
       setSelectedIndex(0);
       return;
     }
 
     const filtered = [];
+
+    // Search Actions
+    ACTION_COMMANDS.forEach((item) => {
+      if (item.label.toLowerCase().includes(q)) filtered.push(item);
+    });
 
     // Search Routes / Navigation
     NAVIGATION_ITEMS.forEach((item) => {
@@ -157,7 +214,7 @@ export default function GlobalSearch() {
 
     setResults(filtered.slice(0, 15)); // Cap at 15 items to keep it clean
     setSelectedIndex(0);
-  }, [query, isOpen, jobApps, targets, studyLogs, questions, milestones]);
+  }, [debouncedQuery, isOpen, jobApps, targets, studyLogs, questions, milestones, recentSearches]);
 
   // 4. Handle Arrow Key Navigation
   const handleKeyDown = (e) => {
@@ -176,8 +233,18 @@ export default function GlobalSearch() {
   };
 
   const handleSelect = (item) => {
+    // Add to recents
+    const updatedRecents = [item, ...recentSearches.filter(r => r.label !== item.label)].slice(0, 3);
+    setRecentSearches(updatedRecents);
+    localStorage.setItem('recent_global_searches', JSON.stringify(updatedRecents));
+    
     setIsOpen(false);
-    navigate(item.path);
+    
+    if (item.action === 'START_TIMER') {
+      if (onStartTimer) onStartTimer();
+    } else if (item.path) {
+      navigate(item.path);
+    }
   };
 
   if (!isOpen) return null;

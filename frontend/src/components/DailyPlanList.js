@@ -9,6 +9,8 @@ import remarkGfm from 'remark-gfm';
 import QuizModal from './QuizModal';
 import PomodoroTimer from './PomodoroTimer';
 import MindMapViewer from './MindMapViewer';
+import SmartPlanner from './SmartPlanner';
+import InteractiveTutor from './InteractiveTutor';
 
 const getDailyPlanStatusBadge = (status) => {
   const s = (status || '').toLowerCase();
@@ -37,6 +39,8 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
   const [showVideo, setShowVideo] = React.useState({}); // {index: bool}
   const [loadingVideo, setLoadingVideo] = React.useState({}); // {index: bool}
   const [videoIds, setVideoIds] = React.useState({}); // {index: string}
+  const [activeTutorIndex, setActiveTutorIndex] = React.useState(null); // Which task is currently in tutor mode
+  const [xpPopups, setXpPopups] = React.useState([]); // Store XP popups [{id, x, y}]
 
   const handleToggleVideo = async (index, taskText) => {
     setShowVideo(prev => ({ ...prev, [index]: !prev[index] }));
@@ -69,85 +73,32 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
   }
 
 
-  // Generate AI output for a single task using Gemini
-  const generateTaskGuide = async (task, index) => {
-    setLoadingOutput(prev => ({ ...prev, [index]: true }));
-    try {
-      const gatewayUrl = localStorage.getItem('AI_GATEWAY_URL') || '';
-      const apiKey = localStorage.getItem('AI_API_KEY');
-      let model = localStorage.getItem('AI_MODEL') || 'gemini-1.5-flash';
-      if (model === 'gemini-2.5-flash' || !model) {
-        model = 'gemini-1.5-flash';
-      }
-      if (!apiKey) {
-        // Save error to backend as well
-        const newOutputs = { ...aiOutputs, [index]: '❌ API Key not set in Settings.' };
-        const updatedPlan = { ...plan, ai_guide: JSON.stringify(newOutputs) };
-        await updateDailyPlan(plan.id, updatedPlan);
-        setLoadingOutput(prev => ({ ...prev, [index]: false }));
-        return;
-      }
-      const prompt = `I am preparing for software/data engineering interviews.\nMy focus area for today is '${plan.focus_area}'.\nToday's task: ${task}\n\nPlease act as an expert technical tutor. Provide a comprehensive, high-quality study guide for this specific task.\nYou MUST provide the actual answers, solutions, and detailed explanations for any concepts, questions, or topics mentioned in the task. Do not just tell me what to study; actually teach it to me and provide the material directly in your response.\nFormat your response cleanly in Markdown, using headings, bullet points, tables, and code blocks where appropriate to make the UI look premium. Keep it highly actionable.`;
+  // We now use InteractiveTutor for AI guide, so we just save chat history
+  const handleSaveTutorHistory = async (index, messages) => {
+    const newOutputs = { ...aiOutputs, [index]: messages };
+    const updatedPlan = { ...plan, ai_guide: JSON.stringify(newOutputs) };
+    await updateDailyPlan(plan.id, updatedPlan);
+    if (typeof reloadPlans === 'function') await reloadPlans();
+  };
 
-      // Only use Gemini logic if the URL is clearly a Google Gemini endpoint
-      let url = '';
-      let headers = {};
-      let body = {};
-      if (/generativelanguage\.googleapis\.com/.test(gatewayUrl)) {
-        // Gemini-compatible (Google)
-        url = `${gatewayUrl.replace(/\/$/, '')}/${model}:generateContent?key=${apiKey}`;
-        headers = { 'Content-Type': 'application/json' };
-        body = { contents: [{ parts: [{ text: prompt }] }] };
-      } else {
-        // Default to OpenAI-compatible
-        url = gatewayUrl.endsWith('/v1/chat/completions') ? gatewayUrl : `${gatewayUrl.replace(/\/$/, '')}/v1/chat/completions`;
-        headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        };
-        body = {
-          model,
-          messages: [
-            { role: 'system', content: 'You are a helpful technical tutor.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7
-        };
-      }
+  const handleCheckboxClick = (e, index) => {
+    const rect = e.target.getBoundingClientRect();
+    const newPopup = { id: Date.now(), x: rect.left + 15, y: rect.top - 10 };
+    setXpPopups(prev => [...prev, newPopup]);
+    setTimeout(() => {
+      setXpPopups(prev => prev.filter(p => p.id !== newPopup.id));
+    }, 1200);
+  };
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body)
-      });
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errText}`);
-      }
-      const data = await response.json();
-      let text = '';
-      if (data.choices && data.choices[0]?.message?.content) {
-        // OpenAI
-        text = data.choices[0].message.content;
-      } else if (data.candidates && data.candidates[0]?.content?.parts) {
-        // Gemini
-        text = data.candidates[0].content.parts.map(p => p.text).join('\n');
-      } else {
-        text = JSON.stringify(data);
-      }
-      // Save to backend (merge with previous outputs)
-      const newOutputs = { ...aiOutputs, [index]: text };
-      const updatedPlan = { ...plan, ai_guide: JSON.stringify(newOutputs) };
-      await updateDailyPlan(plan.id, updatedPlan);
-      if (typeof reloadPlans === 'function') await reloadPlans();
-    } catch (error) {
-      const newOutputs = { ...aiOutputs, [index]: '❌ Error: ' + error.message };
-      const updatedPlan = { ...plan, ai_guide: JSON.stringify(newOutputs) };
-      await updateDailyPlan(plan.id, updatedPlan);
-      if (typeof reloadPlans === 'function') await reloadPlans();
-    } finally {
-      setLoadingOutput(prev => ({ ...prev, [index]: false }));
-    }
+  const toggleTask = (index) => {
+    const items = tasks.split(';').map(t => t.trim()).filter(Boolean);
+    const newItems = items.map((item, i) => {
+        if (i !== index) return item;
+        const isDone = item.startsWith('[x]') || item.startsWith('[X]');
+        const clean = item.replace(/^\[[ x]\]\s*/, '');
+        return isDone ? `[ ] ${clean}` : `[x] ${clean}`;
+    });
+    onToggleTask(plan, newItems.join('; '));
   };
 
   if (!tasks) return <span style={{ color: 'var(--text-muted)' }}>No tasks defined</span>;
@@ -164,9 +115,18 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
   const doneCount = items.filter(i => i.done).length;
   const progressPct = items.length > 0 ? Math.round((doneCount / items.length) * 100) : 0;
 
-  const handleToggle = (index) => {
+  const handleToggle = (index, e) => {
     const newItems = [...items];
     newItems[index].done = !newItems[index].done;
+    
+    // XP Popup logic if completed
+    if (newItems[index].done && e) {
+      const rect = e.target.getBoundingClientRect();
+      const newPopup = { id: Date.now(), x: rect.left + 15, y: rect.top - 10 };
+      setXpPopups(prev => [...prev, newPopup]);
+      setTimeout(() => setXpPopups(prev => prev.filter(p => p.id !== newPopup.id)), 1200);
+    }
+    
     const newTasksString = newItems.map(item => `[${item.done ? 'x' : ' '}] ${item.text}`).join('; ');
     onToggleTask(plan, newTasksString);
   };
@@ -184,16 +144,15 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
     return parts.length > 0 ? parts : text;
   };
 
-  const handleToggleOutput = (index, task) => {
-    setShowOutput(prev => {
-      const next = { ...prev, [index]: !prev[index] };
-      if (next[index] && !loadingOutput[index] && (!aiOutputs || !aiOutputs[index])) generateTaskGuide(task, index);
-      return next;
-    });
-  };
+
 
   return (
     <div>
+      {/* Render XP Popups */}
+      {xpPopups.map(p => (
+        <div key={p.id} className="xp-popup" style={{ left: p.x, top: p.y }}>+10 XP</div>
+      ))}
+      
       {/* Progress bar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
         <div className="dp-progress-bar" style={{ marginBottom: 0, flex: 1 }}>
@@ -209,7 +168,7 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
           <div key={i} className={`dp-task-item ${item.done ? 'dp-task-done' : ''}`}>
             <div className="dp-task-row">
               <span className="dp-task-number">{i + 1}</span>
-              <div className={`dp-checkbox ${item.done ? 'checked' : ''}`} onClick={(e) => { e.stopPropagation(); handleToggle(i); }}>{item.done && '✓'}</div>
+              <div className={`dp-checkbox ${item.done ? 'checked' : ''}`} onClick={(e) => { e.stopPropagation(); handleToggle(i, e); }}>{item.done && '✓'}</div>
               <div className="dp-task-text">{renderTaskText(item.text)}</div>
               <div className="dp-task-actions">
                 <button
@@ -227,12 +186,9 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
                 >
                   {loadingVideo[i] ? '⏳' : showVideo[i] ? '▲ Video' : '▼ Video'}
                 </button>
-                <button className={`dp-task-btn ${showOutput[i] ? 'active' : ''}`} onClick={e => { e.stopPropagation(); handleToggleOutput(i, item.text); }} disabled={loadingOutput[i]}>
-                  {loadingOutput[i] ? '⏳' : showOutput[i] ? '▲ Hide' : '▼ AI Guide'}
+                <button className={`dp-task-btn ${activeTutorIndex === i ? 'active' : ''}`} onClick={e => { e.stopPropagation(); setActiveTutorIndex(activeTutorIndex === i ? null : i); }}>
+                  🤖 Tutor
                 </button>
-                {showOutput[i] && aiOutputs[i] && (
-                  <button className="dp-task-btn" onClick={e => { e.stopPropagation(); generateTaskGuide(item.text, i); }} disabled={loadingOutput[i]} title="Regenerate">🔄</button>
-                )}
               </div>
             </div>
             {showVideo[i] && (
@@ -282,6 +238,21 @@ function TaskChecklist({ plan, onToggleTask, reloadPlans }) {
           </div>
         ))}
       </div>
+      {/* Render Tutor Modal at root level to prevent stacking context clipping */}
+      {activeTutorIndex !== null && (
+        <InteractiveTutor 
+          plan={plan}
+          taskIndex={activeTutorIndex}
+          taskText={items[activeTutorIndex].text}
+          onClose={() => setActiveTutorIndex(null)}
+          initialHistory={Array.isArray(aiOutputs[activeTutorIndex]) ? aiOutputs[activeTutorIndex] : null}
+          onSaveHistory={async (idx, messages) => {
+            const newOutputs = { ...aiOutputs, [idx]: messages };
+            const updatedPlan = { ...plan, ai_guide: JSON.stringify(newOutputs) };
+            await updateDailyPlan(plan.id, updatedPlan);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -380,6 +351,7 @@ export default function DailyPlanList() {
   const [activeQuizPlan, setActiveQuizPlan] = useState(null);
   const [activeTimerPlan, setActiveTimerPlan] = useState(null);
   const [activeMindMapTopic, setActiveMindMapTopic] = useState(null);
+  const [showPlanner, setShowPlanner] = useState(false);
 
   const loadPlans = () => fetchDailyPlans().then(res => {
     const data = res.data;
@@ -391,6 +363,7 @@ export default function DailyPlanList() {
       }
     }
   });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadPlans(); }, []);
 
   const handleDelete = async (id) => {
@@ -531,6 +504,7 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
               {track}
             </button>
           ))}
+          <button className="btn btn-primary" onClick={() => setShowPlanner(true)}>🤖 AI Plan My Week</button>
         </div>
       )}
 
@@ -558,22 +532,30 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
             <option value="pending">Pending</option>
           </select>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1.5rem', fontSize: '0.8rem' }}>
+
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8rem' }}>
           <span style={{ color: 'var(--text-secondary)' }}>
             <strong style={{ color: 'var(--text-primary)' }}>{filtered.length}</strong> days
           </span>
           <span style={{ color: 'var(--text-secondary)' }}>
-            <strong style={{ color: 'var(--success)' }}>{doneCount}</strong> done
-          </span>
-          <span style={{ color: 'var(--text-secondary)' }}>
             <strong style={{ color: 'var(--accent)' }}>{totalHours}h</strong> planned
           </span>
+          {/* Progress Ring */}
+          <div style={{ position: 'relative', width: '40px', height: '40px' }}>
+            <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="4" />
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--success)" strokeWidth="4" strokeDasharray={`${filtered.length ? Math.round((doneCount / filtered.length) * 100) : 0}, 100`} />
+            </svg>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              {filtered.length ? Math.round((doneCount / filtered.length) * 100) : 0}%
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Plan Cards */}
       <div className="cards-grid">
-        {filtered.map(plan => {
+        {filtered.map((plan, index) => {
           const isExpanded = expandedId === plan.id;
           const isEditing = editId === plan.id;
           const taskItems = plan.tasks ? plan.tasks.split(';').filter(t => t.trim()) : [];
@@ -584,7 +566,21 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
             <div key={plan.id} className={`dp-card ${isExpanded ? 'dp-expanded' : ''}`}>
               {/* Header Row */}
               <div className="dp-header" onClick={() => !isEditing && setExpandedId(isExpanded ? null : plan.id)} style={{ cursor: isEditing ? 'default' : 'pointer' }}>
-                <div className="dp-day-circle">{plan.day}</div>
+                <div style={{ padding: '0 0.5rem', display: 'flex', alignItems: 'center' }}>
+                  <input type="checkbox" 
+                    checked={(plan.status || '').toLowerCase().includes('done')} 
+                    onChange={async (e) => {
+                      e.stopPropagation();
+                      const isDone = (plan.status || '').toLowerCase().includes('done');
+                      const newStatus = isDone ? 'Pending' : 'Done';
+                      await updateDailyPlan(plan.id, { ...plan, status: newStatus });
+                      loadPlans();
+                    }} 
+                    onClick={e => e.stopPropagation()}
+                    style={{ cursor: 'pointer', transform: 'scale(1.2)', accentColor: 'var(--success)', margin: 0 }} 
+                  />
+                </div>
+                <div className="dp-day-circle">{index + 1}</div>
                 <div style={{ minWidth: 0 }}>
                   <div className="dp-info-primary">
                     <span className="dp-focus-area">{plan.focus_area}</span>
@@ -688,13 +684,8 @@ Format your response cleanly in Markdown, using headings, bullet points, tables,
         </div>
       )}
 
-      {activeQuizPlan && (
-        <QuizModal 
-          plan={activeQuizPlan} 
-          onClose={() => setActiveQuizPlan(null)} 
-          onSaveScores={loadPlans}
-        />
-      )}
+      {activeQuizPlan && <QuizModal plan={activeQuizPlan} onClose={() => { setActiveQuizPlan(null); loadPlans(); }} />}
+      {showPlanner && <SmartPlanner onClose={() => { setShowPlanner(false); loadPlans(); }} />}
 
       {activeMindMapTopic && (
         <MindMapViewer 

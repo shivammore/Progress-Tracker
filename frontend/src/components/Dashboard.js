@@ -1,27 +1,40 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import axios from 'axios';
 import API_BASE_URL from '../api/config';
 import FeynmanSimulator from './FeynmanSimulator';
 import TechSnacks from './TechSnacks';
+import SRSWidget from './SRSWidget';
+import DailyGoalWidget from './DailyGoalWidget';
+import { SkeletonCard, SkeletonRow } from './SkeletonLoader';
+import { useToast } from './ToastManager';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [error, setError] = useState(null);
   const [showFeynman, setShowFeynman] = useState(false);
   const navigate = useNavigate();
+  const cachedStats = useRef(null);
+  const toast = useToast();
 
   useEffect(() => {
+    if (cachedStats.current) {
+      setStats(cachedStats.current);
+      return;
+    }
+    
     axios.get(`${API_BASE_URL}/analytics/summary`)
       .then(res => {
+        cachedStats.current = res.data;
         setStats(res.data);
         setError(null);
       })
       .catch((err) => {
         console.error('Dashboard fetch error:', err);
         setError('Could not connect to the backend. Make sure the API server is running.');
+        if (toast) toast.error('Failed to load dashboard data');
       });
-  }, []);
+  }, [toast]);
 
   if (error) {
     return (
@@ -46,12 +59,26 @@ export default function Dashboard() {
     );
   }
 
+  // Helper to determine greeting
+  const hour = new Date().getHours();
+  let greeting = 'Good evening';
+  if (hour < 12) greeting = 'Good morning';
+  else if (hour < 18) greeting = 'Good afternoon';
+
   if (!stats) {
     return (
       <div className="section-page">
-        <div className="section-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'pulse 1.5s infinite' }}>⏳</div>
-          <div style={{ color: 'var(--text-secondary)' }}>Loading dashboard...</div>
+        <div className="welcome-banner" style={{
+          background: 'linear-gradient(135deg, var(--accent-dark), var(--accent))',
+          padding: '2rem', borderRadius: 'var(--radius-lg)', marginBottom: '1.5rem'
+        }}>
+          <SkeletonRow height="32px" width="300px" style={{ marginBottom: '0.5rem', background: 'rgba(255,255,255,0.2)' }} />
+          <SkeletonRow height="16px" width="200px" style={{ background: 'rgba(255,255,255,0.2)' }} />
+        </div>
+        <div className="stats-grid">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} height="120px" />
+          ))}
         </div>
       </div>
     );
@@ -96,11 +123,6 @@ export default function Dashboard() {
     },
   ];
 
-  // Helper to determine greeting
-  const hour = new Date().getHours();
-  let greeting = 'Good evening';
-  if (hour < 12) greeting = 'Good morning';
-  else if (hour < 18) greeting = 'Good afternoon';
 
   return (
     <div className="section-page">
@@ -134,11 +156,26 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Streak */}
-          <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.2)', padding: '0.75rem 1.5rem', borderRadius: 'var(--radius-md)' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{current_streak} 🔥</div>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Day Streak</div>
-          </div>
+          {/* Streak & Daily Goals */}
+          {current_streak >= 3 && (
+            <div style={{
+              background: 'linear-gradient(135deg, #f97316, #ef4444)',
+              color: 'white',
+              padding: '0.75rem 1.25rem',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontWeight: 800,
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+              animation: 'pulse 2s infinite'
+            }}>
+              <span style={{ fontSize: '1.2rem' }}>🔥</span>
+              {current_streak} Day Streak!
+            </div>
+          )}
+          
+          <DailyGoalWidget />
           
           <button 
             className="btn btn-primary" 
@@ -250,6 +287,20 @@ export default function Dashboard() {
         {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
+          {/* Weekly Review Prompt */}
+          <div className="section-card" style={{ marginBottom: 0, background: 'linear-gradient(135deg, var(--bg-card), var(--bg-main))', borderLeft: '4px solid var(--accent)' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              📅 Weekly Sprint Review
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Keep your Agentic AI journey on track. Reflect on your progress this week.
+            </p>
+            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => navigate('/weekly-review')}>
+              Run Retrospective
+            </button>
+          </div>
+
+          <SRSWidget />
           <TechSnacks />
           {/* Upcoming Reminders */}
           <div className="section-card" style={{ marginBottom: 0 }}>

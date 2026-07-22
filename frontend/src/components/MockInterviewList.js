@@ -85,6 +85,48 @@ export default function MockInterviewList() {
       </div>
 
       <MockInterviewForm onSuccess={loadInterviews} />
+      
+      {/* Sparkline and Filters */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '1.5rem',
+        padding: '1rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border)', flexWrap: 'wrap'
+      }}>
+        {/* Sparkline Chart */}
+        {interviews.length > 1 && (
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Score Trend</div>
+            <svg viewBox="0 0 100 40" style={{ width: '100%', height: '40px', overflow: 'visible' }}>
+              <polyline
+                fill="none"
+                stroke="var(--accent)"
+                strokeWidth="2"
+                points={
+                  [...interviews].sort((a, b) => a.date.localeCompare(b.date))
+                  .map((inv, i, arr) => `${(i / (arr.length - 1)) * 100},${40 - (inv.score / 10) * 40}`).join(' ')
+                }
+              />
+              {[...interviews].sort((a, b) => a.date.localeCompare(b.date)).map((inv, i, arr) => (
+                <circle key={inv.id} cx={(i / (arr.length - 1)) * 100} cy={40 - (inv.score / 10) * 40} r="2" fill="var(--bg-main)" stroke="var(--accent)" strokeWidth="1.5" />
+              ))}
+            </svg>
+          </div>
+        )}
+
+        {/* Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Type:</span>
+          <select className="form-control" onChange={e => {
+            const v = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('.mock-row');
+            rows.forEach(r => r.style.display = (v === 'all' || r.dataset.type.toLowerCase().includes(v)) ? '' : 'none');
+          }} style={{ padding: '0.4rem 0.6rem', minWidth: '120px' }}>
+            <option value="all">All Types</option>
+            {[...new Set(interviews.map(i => i.type))].map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+
       <div className="table-responsive">
         <table className="styled-table">
           <thead>
@@ -99,7 +141,7 @@ export default function MockInterviewList() {
           </thead>
           <tbody>
             {interviews.map(interview => (
-              <tr key={interview.id} className={editId === interview.id ? 'editing-row' : ''}>
+              <tr key={interview.id} className={`mock-row ${editId === interview.id ? 'editing-row' : ''}`} data-type={interview.type}>
                 {editId === interview.id ? (
                   <td colSpan="6">
                     <EditRow interview={interview} onSave={handleSave} onCancel={handleCancel} />

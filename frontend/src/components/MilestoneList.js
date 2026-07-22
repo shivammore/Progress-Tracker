@@ -170,7 +170,7 @@ export default function MilestoneList() {
                         <div className="m-body">
                           <div className="m-meta">
                             <span>📅</span> 
-                            <span style={{ fontWeight: 500, color: m.due_date ? 'var(--text-primary)' : 'inherit' }}>
+                            <span style={{ fontWeight: 500, color: m.due_date ? (new Date(m.due_date) < new Date() && !isDone ? 'var(--danger)' : 'var(--text-primary)') : 'inherit' }}>
                               {m.due_date ? `Due: ${m.due_date}` : 'No due date'}
                             </span>
                           </div>
@@ -184,7 +184,12 @@ export default function MilestoneList() {
                           <button className="btn btn-edit" onClick={() => setEditId(m.id)}>✏️ Edit</button>
                           <button className="btn btn-danger" onClick={() => handleDelete(m.id)}>🗑️ Delete</button>
                           {!isDone && (
-                            <button className="btn btn-primary" onClick={() => markDone(m)}>✅ Mark Done</button>
+                            <button className="btn btn-primary" onClick={() => {
+                              import('./ToastManager').then(module => {
+                                if (module.toast) module.toast.success('🎉 Milestone Completed! Great job!');
+                              });
+                              markDone(m);
+                            }}>✅ Mark Done</button>
                           )}
                         </div>
                       </>

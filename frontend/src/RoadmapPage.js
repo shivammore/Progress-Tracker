@@ -347,10 +347,298 @@ const ML_ROADMAP = [
   }
 ];
 
+const DATA_AI_ROADMAP = [
+  {
+    week: 1,
+    focus: 'Python, SQL & Big Data Foundations',
+    summary: 'Kick off your hybrid Data & Agentic AI journey. Review Python, SQL, and data modeling while introducing the core concepts of Large Language Models.',
+    days: [
+      { day: 1, title: 'Set up Tracker & Target Hybrid Roles', details: 'Establish tracking workspace. Collect 10-20 relevant job descriptions targeting Data Engineering or AI Engineer roles.', tasks: '[ ] Set up tracking workspace; [ ] Gather 15 target job descriptions; [ ] Research and list target companies' },
+      { day: 2, title: 'Python & JSON Parsing', details: 'Review Python object-oriented programming, generator patterns, list comprehensions, and JSON file parsing.', tasks: '[ ] Review generators and yielding; [ ] Build simple JSON log parser; [ ] Solve 3 Python logic problems' },
+      { day: 3, title: 'SQL Foundations & Aggregations', details: 'Review advanced SQL basics (joins, grouping, grouping sets, rollup, and cube aggregations).', tasks: '[ ] Practice GROUP BY, GROUPING SETS, and ROLLUP; [ ] Solve 5 intermediate SQL problems; [ ] Study index types' },
+      { day: 4, title: 'Advanced SQL - Window Functions', details: 'Tackle ranking, lead/lag comparisons, and running aggregates in complex analytical setups.', tasks: '[ ] Study LEAD, LAG, ROW_NUMBER, and DENSE_RANK; [ ] Practice 5 window function queries; [ ] Solve 2 hard window problems' },
+      { day: 5, title: 'Data Lakes & Cloud Storage Basics', details: 'Learn Object Storage concepts, directory structures, and bucket partitioning strategies in AWS S3 or GCS.', tasks: '[ ] Study S3 object storage; [ ] Design file prefix partitioning strategy; [ ] Compare Data Lake vs Data Warehouse' },
+      { day: 6, title: 'Intro to LLMs & Prompt Engineering', details: 'Understand the basics of Large Language Models. Practice zero-shot, few-shot, and Chain-of-Thought prompting.', tasks: '[ ] Practice few-shot prompt templates; [ ] Build simple Chain-of-Thought prompts; [ ] Understand LLM tokenization' },
+      { day: 7, title: 'Week 1 Review & Rest', details: 'Consolidate Python and SQL basics, review LLM basics, and take rest.', tasks: '[ ] Log SQL aggregations confidence; [ ] Review Week 1 gaps; [ ] Plan next week' }
+    ]
+  },
+  {
+    week: 2,
+    focus: 'Big Data Core (Spark) & Embeddings',
+    summary: 'Deep dive into Apache Spark architecture and transformations alongside understanding text embeddings and Vector Databases.',
+    days: [
+      { day: 8, title: 'Apache Spark Architecture', details: 'Study driver nodes, executors, cluster managers, JVM, tasks, slots, and memory configurations.', tasks: '[ ] Map Spark execution lifecycle; [ ] Study Driver vs Executor memory; [ ] Read architecture overview' },
+      { day: 9, title: 'Spark Core - RDDs vs DataFrames', details: 'Understand resilient distributed datasets (RDDs), Spark DataFrames, and Catalyst Optimizer.', tasks: '[ ] Compare RDD vs DataFrame; [ ] Study lazy evaluation and execution plan lineage; [ ] Write basic DataFrame transformations' },
+      { day: 10, title: 'Spark Transformations & Data Cleaning', details: 'Write robust Spark scripts for duplicate handling, null imputation, timestamp conversions, and data casting.', tasks: '[ ] Write Spark duplicate drop script; [ ] Impute missing values using Spark Functions; [ ] Convert timezone timestamp column' },
+      { day: 11, title: 'Embeddings & Vector Search', details: 'Learn feature representation in text. Understand how text is converted to dense vectors for semantic search.', tasks: '[ ] Study Word2Vec vs modern LLM embeddings; [ ] Calculate cosine similarity in Python; [ ] Generate embeddings using OpenAI/Gemini API' },
+      { day: 12, title: 'Vector Databases Basics', details: 'Learn how Vector Databases store and index embeddings. Study Pinecone, Chroma, and FAISS.', tasks: '[ ] Setup local ChromaDB instance; [ ] Insert embeddings into Vector DB; [ ] Perform semantic search query' },
+      { day: 13, title: 'Hybrid Project Setup', details: 'Draft a comprehensive spec for a flagship project that combines big data processing and AI search.', tasks: '[ ] Outline hybrid ETL + AI project architecture; [ ] Draft schema layout for staging and production; [ ] Setup Git repository' },
+      { day: 14, title: 'Week 2 Review & Apply', details: 'Submit applications for active roles and review Spark and Embeddings.', tasks: '[ ] Apply to 3 target DE/AI roles; [ ] Review Spark transformations; [ ] Log study hours' }
+    ]
+  },
+  {
+    week: 3,
+    focus: 'Data Warehousing & Retrieval-Augmented Gen (RAG)',
+    summary: 'Master cloud analytical data warehouses (Snowflake) and implement RAG pipelines.',
+    days: [
+      { day: 15, title: 'Data Warehouse - Snowflake Architecture', details: 'Study Snowflake separation of storage and compute, micro-partitions, and virtual warehouses.', tasks: '[ ] Map Snowflake storage-compute layout; [ ] Differentiate clustering keys vs automatic clustering; [ ] Compare Snowflake vs Redshift' },
+      { day: 16, title: 'ELT Pipeline Modeling - dbt Basics', details: 'Learn data build tool (dbt), models, materializations (tables, views, incremental), and documentation.', tasks: '[ ] Build basic dbt model; [ ] Configure incremental materialization; [ ] Run dbt tests' },
+      { day: 17, title: 'Intro to RAG (Retrieval-Augmented Gen)', details: 'Understand the RAG architecture: Retrieval, Augmentation, and Generation. Connect your Vector DB to an LLM.', tasks: '[ ] Build simple RAG pipeline in Python; [ ] Connect ChromaDB retrieval to LLM prompt; [ ] Test QA on custom documents' },
+      { day: 18, title: 'Document Loaders & Text Splitters', details: 'Learn chunking strategies for RAG. Process large text files and PDFs into vector-friendly chunks.', tasks: '[ ] Use LangChain Document Loaders; [ ] Implement Recursive Character Text Splitting; [ ] Compare chunk overlap sizes' },
+      { day: 19, title: 'Advanced RAG Techniques', details: 'Implement multi-query retrieval, context compression, and re-ranking for better accuracy.', tasks: '[ ] Implement Cohere/Cross-Encoder re-ranking; [ ] Build multi-query retriever; [ ] Evaluate RAG retrieval accuracy' },
+      { day: 20, title: 'Mock Interview - Data Warehousing', details: 'Practice system design. Sketch an enterprise-grade analytics pipeline.', tasks: '[ ] Design dimensional model; [ ] Identify bottleneck in dbt runs; [ ] Dry-run queries on paper' },
+      { day: 21, title: 'Week 3 Review & Apply', details: 'Review RAG pipelines and submit new job applications.', tasks: '[ ] Apply to 3 job listings; [ ] Review Snowflake vs dbt workflow; [ ] Recharge' }
+    ]
+  },
+  {
+    week: 4,
+    focus: 'Pipeline Orchestration & LangChain',
+    summary: 'Learn workflow automation using Apache Airflow and build complex AI workflows using LangChain.',
+    days: [
+      { day: 22, title: 'Pipeline Scheduling & Airflow Basics', details: 'Introduction to pipeline orchestration. Learn Directed Acyclic Graphs (DAGs), operators, and tasks.', tasks: '[ ] Study DAG structural concepts; [ ] Build a simple 3-task Airflow DAG script; [ ] Compare Airflow Operators vs Sensors' },
+      { day: 23, title: 'Airflow - Dynamic DAGs & XComs', details: 'Learn dynamic DAG generation, TaskFlow API, XComs data sharing, and SLA triggers.', tasks: '[ ] Build Airflow DAG dynamically from config; [ ] Pass state using XComs / TaskFlow; [ ] Configure email SLAs on failure' },
+      { day: 24, title: 'LangChain Foundations', details: 'Deep dive into LangChain components: Prompts, LLMs, Output Parsers, and Chains.', tasks: '[ ] Build structured output parser; [ ] Chain multiple LLM calls together; [ ] Handle LLM rate limits and retries' },
+      { day: 25, title: 'LangChain Memory & Chatbots', details: 'Implement conversation memory buffer, vector store memory, and conversational retrieval chains.', tasks: '[ ] Build conversational chatbot with history; [ ] Implement ConversationalRetrievalChain; [ ] Test multi-turn QA' },
+      { day: 26, title: 'Automated Data Pipelines with AI', details: 'Use Airflow to orchestrate data ingestion and trigger vector embedding generation jobs.', tasks: '[ ] Write Airflow DAG to fetch daily data; [ ] Add Airflow task to generate embeddings; [ ] Automate Vector DB upserts' },
+      { day: 27, title: 'Mock Interview - Hybrid Architecture', details: 'Complete a timed system design challenge combining Data Pipelines and AI.', tasks: '[ ] Design automated RAG ingestion pipeline; [ ] Address LLM rate limiting in pipeline; [ ] Self-evaluate architecture' },
+      { day: 28, title: 'Week 4 Review & Mid-Point Check', details: 'Verify Airflow and LangChain integrations and submit job applications.', tasks: '[ ] Review Airflow idempotency; [ ] Apply to 4 new listings; [ ] Update target company tracker' }
+    ]
+  },
+  {
+    week: 5,
+    focus: 'Agentic AI & Function Calling',
+    summary: 'Master Agentic AI concepts, allowing LLMs to reason, use tools, and interact with your databases.',
+    days: [
+      { day: 29, title: 'Intro to Agentic AI (ReAct)', details: 'Understand the Reasoning and Acting (ReAct) framework. Learn how LLMs make decisions step-by-step.', tasks: '[ ] Study ReAct prompt loops; [ ] Implement manual ReAct loop in Python; [ ] Analyze LLM trace logs' },
+      { day: 30, title: 'Function Calling / Tool Use', details: 'Configure LLMs to output structured JSON to trigger external API calls and functions.', tasks: '[ ] Implement OpenAI/Gemini Function Calling; [ ] Build custom Python tool for LLM; [ ] Handle tool execution errors gracefully' },
+      { day: 31, title: 'Building LangChain Agents', details: 'Use LangChain to build autonomous agents equipped with custom tools (e.g. SQL executor, web search).', tasks: '[ ] Build AgentExecutor in LangChain; [ ] Equip agent with SQL Database Tool; [ ] Test agent answering questions from DB' },
+      { day: 32, title: 'Text-to-SQL Agents', details: 'Combine Data Engineering and AI by building an agent that queries your data warehouse autonomously.', tasks: '[ ] Connect LangChain to local DB/Snowflake; [ ] Write few-shot SQL examples for agent; [ ] Evaluate agent on complex joins' },
+      { day: 33, title: 'Data Quality & AI Guardrails', details: 'Implement data quality checks and LLM output guardrails to prevent hallucinations and SQL injections.', tasks: '[ ] Implement NeMo Guardrails or similar; [ ] Validate LLM SQL output syntax; [ ] Set up alerts for failed AI queries' },
+      { day: 34, title: 'Agentic Workflow Orchestration', details: 'Explore LangGraph or AutoGen to build multi-agent workflows and cyclical graphs.', tasks: '[ ] Study LangGraph state management; [ ] Build a 2-agent conversation loop; [ ] Compare Chains vs Agents' },
+      { day: 35, title: 'Week 5 Review & Rest', details: 'Consolidate Agentic AI concepts, review LangGraph setups, and take rest.', tasks: '[ ] Log Tool Calling confidence; [ ] Review Text-to-SQL pitfalls; [ ] Rest' }
+    ]
+  },
+  {
+    week: 6,
+    focus: 'Real-time Streaming & AI Ingestion',
+    summary: 'Learn streaming architectures with Apache Kafka and how to stream data into AI applications.',
+    days: [
+      { day: 36, title: 'Kafka Architecture & Streaming', details: 'Study topics, partitions, producers, consumers, consumer groups, brokers, and ZooKeeper/KRaft.', tasks: '[ ] Map Kafka producer-consumer lifecycle; [ ] Study partition distribution; [ ] Write basic Kafka producer/consumer in Python' },
+      { day: 37, title: 'Kafka Message Ordering & CDC', details: 'Understand exactly-once delivery, message keys, and Change Data Capture (CDC) with Debezium.', tasks: '[ ] Map exactly-once delivery configurations; [ ] Explain message ordering guarantees; [ ] Design CDC architecture' },
+      { day: 38, title: 'Structured Streaming in Spark', details: 'Write real-time ingestion scripts using PySpark Structured Streaming reading from Kafka.', tasks: '[ ] Write Spark Structured Streaming read script; [ ] Apply window aggregation; [ ] Write streaming data to Delta Lake' },
+      { day: 39, title: 'Real-time AI Inference & Enrichment', details: 'Process streaming data and apply AI models (e.g. sentiment analysis, embedding generation) on the fly.', tasks: '[ ] Consume Kafka stream; [ ] Generate embeddings per message in real-time; [ ] Stream enriched data to Vector DB' },
+      { day: 40, title: 'Timed System Design Mock', details: 'Complete a timed streaming and AI system design challenge.', tasks: '[ ] Design real-time AI alerting pipeline; [ ] Identify broker scaling bottlenecks; [ ] Self-evaluate partition allocation' },
+      { day: 41, title: 'Behavioral Prep - Hybrid Scenarios', details: 'Structure behavioral answers addressing pipeline failures, hallucinating AI models, and data privacy.', tasks: '[ ] Document 2 pipeline/AI failure stories; [ ] Draft hallucination mitigation patterns; [ ] Practice STAR delivery' },
+      { day: 42, title: 'Week 6 Review & Apply', details: 'Apply to active openings and review streaming integrations.', tasks: '[ ] Apply to 5 DE/AI openings; [ ] Study streaming architectures; [ ] Log study gaps' }
+    ]
+  },
+  {
+    week: 7,
+    focus: 'Deployments, Governance & MLOps',
+    summary: 'Deploy your models and pipelines. Focus on CI/CD, FastAPI serving, and LLM Ops (LLMOps).',
+    days: [
+      { day: 43, title: 'API Design & FastAPI Serving', details: 'Build performant REST APIs for real-time model inference and agent execution.', tasks: '[ ] Build FastAPI serving Agent endpoint; [ ] Benchmark API latency; [ ] Implement asynchronous endpoints' },
+      { day: 44, title: 'Containerization & Docker', details: 'Create reproducible Docker containers for your AI APIs and data pipelines.', tasks: '[ ] Write Dockerfile for FastAPI app; [ ] Build and test Docker image locally; [ ] Write Docker Compose for App + DB' },
+      { day: 45, title: 'LLM Evaluation & Monitoring (LLMOps)', details: 'Learn to continuously monitor LLM outputs, track latency, and evaluate generation quality.', tasks: '[ ] Study RAGAS evaluation metrics; [ ] Integrate LangSmith or similar for tracing; [ ] Monitor LLM API costs and latency' },
+      { day: 46, title: 'Pipeline CI/CD & Deployments', details: 'Implement automated testing and deployment for Airflow DAGs and AI code using GitHub Actions.', tasks: '[ ] Write GitHub Actions workflow running tests; [ ] Configure CI/CD check; [ ] Setup staging deployment script' },
+      { day: 47, title: 'Data Privacy & Security (RBAC)', details: 'Study role-based access control (RBAC), prompt injection defense, and PII masking.', tasks: '[ ] Implement PII masking before LLM calls; [ ] Study prompt injection attacks; [ ] Differentiate Row-Level vs Column-Level security' },
+      { day: 48, title: 'Case Studies - AI & Big Data at Scale', details: 'Read real-world case studies detailing how modern tech teams scale pipelines and generative AI.', tasks: '[ ] Read Netflix Big Data case study; [ ] Read applied AI case studies (e.g. Uber/Airbnb); [ ] Write summary bullet points' },
+      { day: 49, title: 'Week 7 Review & Apply', details: 'Submit final batch of applications and review deployment patterns.', tasks: '[ ] Apply to 5 active roles; [ ] Review Docker configurations; [ ] Relax' }
+    ]
+  },
+  {
+    week: 8,
+    focus: 'Final Polish, System Design & Offers',
+    summary: 'Polish interview responses, finalize your flagship hybrid project, and ace the live rounds.',
+    days: [
+      { day: 50, title: 'Final Technical Checklist', details: 'Review the comprehensive list of data engineering architectures, SQL formulas, and Agentic AI concepts.', tasks: '[ ] Review Spark parameters and tuning variables; [ ] Review RAG chunking and Agents; [ ] Review Airflow contexts' },
+      { day: 51, title: 'Salary Bands & Negotiation', details: 'Analyze market salary ranges for senior data/AI engineers and practice counter-offer dialogue.', tasks: '[ ] Research salaries on Levels.fyi; [ ] Practice negotiation scripts; [ ] List target equity and sign-on goals' },
+      { day: 52, title: 'Architecture Quick Review', details: 'Spend brief blocks reviewing data ingestion, warehousing, and AI Agent loops.', tasks: '[ ] Sketch 3 hybrid data/AI pipelines; [ ] Review text-to-SQL architecture; [ ] Review streaming enrichment' },
+      { day: 53, title: 'Tutor Q&A & Project Polish', details: 'Ensure your flagship project is fully deployed, documented, and ready for showcase.', tasks: '[ ] Finalize README with architecture diagram; [ ] Record a 2-minute demo video; [ ] Dry-run 5 technical presentation points' },
+      { day: 54, title: 'Recruiter Follow-up Scripts', details: 'Prepare thank you and update letters to secure rapid recruitment cycles.', tasks: '[ ] Write thank you message draft; [ ] Create follow-up check template; [ ] Review recruiter contact points' },
+      { day: 55, title: 'Celebrate Hybrid Success!', details: 'Relax, celebrate your growth, and enjoy your transition to Data & AI Engineering.', tasks: '[ ] Mark milestone project done; [ ] Check dashboard analytics; [ ] Relax!' },
+      { day: 56, title: 'Continuous Career Learning', details: 'Establish goals for your new hybrid role and plan future tooling skillsets.', tasks: '[ ] Map out next Data/AI learning goals; [ ] Archive interview tracker; [ ] Enjoy your success!' }
+    ]
+  }
+];
+
+const AGENTIC_AI_ROADMAP = [
+  {
+    week: 1,
+    focus: 'LLM Fundamentals',
+    summary: 'Understand the underlying mechanisms of Large Language Models, Transformer attention, tokenization, and temperature.',
+    days: [
+      { day: 1, title: 'Introduction to LLMs', details: 'Overview of Large Language Models and generative AI history.', tasks: '[ ] Read about the history of LLMs; [ ] Understand the differences between generative and discriminative models; [ ] Setup learning environment' },
+      { day: 2, title: 'Transformer Architecture Basics', details: 'Study the Attention mechanism and the foundational paper "Attention is All You Need".', tasks: '[ ] Read "Attention is All You Need" abstract & intro; [ ] Study self-attention mechanism; [ ] Watch a video on Transformer architecture' },
+      { day: 3, title: 'Tokenization Deep Dive', details: 'Learn how text is converted into tokens and how vocabulary size impacts model performance.', tasks: '[ ] Learn Byte-Pair Encoding (BPE); [ ] Use Tiktoken to tokenize sample texts; [ ] Analyze token limit constraints' },
+      { day: 4, title: 'Model Parameters & Temperature', details: 'Understand temperature, top-k, top-p, and how they affect generation randomness.', tasks: '[ ] Experiment with temperature settings (0.0 vs 1.0); [ ] Understand top-p (nucleus sampling); [ ] Write a script calling an API with different settings' },
+      { day: 5, title: 'Embeddings & Vector Spaces', details: 'Explore how tokens are mapped to continuous vector representations.', tasks: '[ ] Study word2vec basics; [ ] Generate embeddings using OpenAI API; [ ] Calculate cosine similarity between two vectors' },
+      { day: 6, title: 'Open Source vs Closed Source LLMs', details: 'Compare models like GPT-4 to LLaMA, Mistral, and others.', tasks: '[ ] Compare API costs and rate limits; [ ] Setup Hugging Face account; [ ] Explore local LLM execution via Ollama' },
+      { day: 7, title: 'Week 1 Review & Rest', details: 'Review core concepts of Transformers, tokenization, and LLM behavior.', tasks: '[ ] Summarize Transformer architecture; [ ] Review tokenization and temperature; [ ] Rest' }
+    ]
+  },
+  {
+    week: 2,
+    focus: 'Prompt Engineering Mastery',
+    summary: 'Master techniques to guide LLMs effectively, from basic zero-shot to complex Chain-of-Thought and prompt chaining.',
+    days: [
+      { day: 8, title: 'Zero-shot and Few-shot Prompting', details: 'Learn to provide examples in the prompt to improve output formatting and accuracy.', tasks: '[ ] Write 5 zero-shot prompts; [ ] Create a few-shot prompt for classification; [ ] Evaluate few-shot vs zero-shot results' },
+      { day: 9, title: 'Chain-of-Thought (CoT)', details: 'Elicit step-by-step reasoning from the model to solve complex logic and math problems.', tasks: '[ ] Study the CoT paper; [ ] Implement a CoT prompt for a math problem; [ ] Compare CoT vs standard prompting' },
+      { day: 10, title: 'System Prompts & Personas', details: 'Use system messages to set behavior, tone, and constraints for the assistant.', tasks: '[ ] Write a comprehensive system prompt; [ ] Design a specific persona for a chatbot; [ ] Test prompt robustness against jailbreaks' },
+      { day: 11, title: 'Prompt Chaining Basics', details: 'Break down complex tasks into sequential prompts where the output of one feeds into the next.', tasks: '[ ] Design a 2-step prompt chain; [ ] Implement chaining in Python; [ ] Handle errors between chain steps' },
+      { day: 12, title: 'Self-Consistency & Tree of Thoughts', details: 'Explore advanced prompting strategies for reasoning-heavy tasks.', tasks: '[ ] Implement self-consistency (majority vote); [ ] Read about Tree of Thoughts; [ ] Apply self-consistency to a logic puzzle' },
+      { day: 13, title: 'Output Formatting & Regex', details: 'Ensure the LLM returns exactly the format needed (JSON, CSV, markdown).', tasks: '[ ] Prompt for strict JSON output; [ ] Use Regex to extract data from LLM text; [ ] Handle malformed outputs gracefully' },
+      { day: 14, title: 'Week 2 Review & Rest', details: 'Consolidate prompting techniques and build a prompt library.', tasks: '[ ] Create a personal prompt library; [ ] Review CoT and chaining; [ ] Rest' }
+    ]
+  },
+  {
+    week: 3,
+    focus: 'LangChain Core',
+    summary: 'Learn to orchestrate LLM workflows using LangChain components like Prompts, Output Parsers, and Chains.',
+    days: [
+      { day: 15, title: 'LangChain Introduction & Setup', details: 'Get familiar with LangChain architecture and initialize your first LLM chain.', tasks: '[ ] Install LangChain and dependencies; [ ] Initialize OpenAI/Anthropic model in LangChain; [ ] Run a simple prediction' },
+      { day: 16, title: 'Prompt Templates', details: 'Dynamic prompt generation using LangChain PromptTemplates.', tasks: '[ ] Create a basic PromptTemplate; [ ] Use ChatPromptTemplate for system/user messages; [ ] Pass dynamic variables into templates' },
+      { day: 17, title: 'Output Parsers', details: 'Extract structured data from LLM responses automatically.', tasks: '[ ] Implement PydanticOutputParser; [ ] Use CommaSeparatedListOutputParser; [ ] Handle parsing errors with RetryOutputParser' },
+      { day: 18, title: 'LangChain Expression Language (LCEL)', details: 'Master LCEL for composing chains with pipe syntax.', tasks: '[ ] Build a simple chain using LCEL; [ ] Combine prompt, model, and parser in LCEL; [ ] Understand Runnable interfaces' },
+      { day: 19, title: 'Sequential Chains', details: 'Chain multiple LCEL runnables together for multi-step workflows.', tasks: '[ ] Create a chain where step 2 depends on step 1; [ ] Pass multiple variables through a chain; [ ] Debug chain execution' },
+      { day: 20, title: 'Memory in LangChain', details: 'Add conversational memory to keep context across interactions.', tasks: '[ ] Implement ConversationBufferMemory; [ ] Try ConversationSummaryMemory; [ ] Integrate memory into an LCEL chain' },
+      { day: 21, title: 'Week 3 Review & Rest', details: 'Review LangChain core components and LCEL syntax.', tasks: '[ ] Build a mini-chatbot with memory and parsing; [ ] Review LCEL documentation; [ ] Rest' }
+    ]
+  },
+  {
+    week: 4,
+    focus: 'RAG Deep Dive',
+    summary: 'Build Retrieval-Augmented Generation systems using Vector DBs, document loaders, chunking, and hybrid search.',
+    days: [
+      { day: 22, title: 'Introduction to RAG', details: 'Understand the RAG architecture and its benefits over fine-tuning.', tasks: '[ ] Diagram a standard RAG pipeline; [ ] Understand naive RAG limitations; [ ] Setup a basic document loader' },
+      { day: 23, title: 'Document Chunking Strategies', details: 'Learn how to split documents optimally for embedding and retrieval.', tasks: '[ ] Use RecursiveCharacterTextSplitter; [ ] Implement semantic chunking; [ ] Compare chunk sizes and overlaps' },
+      { day: 24, title: 'Vector Databases Basics', details: 'Store and query vector embeddings efficiently.', tasks: '[ ] Setup a local vector DB (Chroma/FAISS); [ ] Insert chunked documents; [ ] Perform similarity search' },
+      { day: 25, title: 'Advanced Retrieval Techniques', details: 'Improve retrieval precision with MultiQuery, Parent Document, and Self-Query retrievers.', tasks: '[ ] Implement MultiQueryRetriever; [ ] Setup ParentDocumentRetriever; [ ] Test retrieval quality improvements' },
+      { day: 26, title: 'Hybrid Search & Re-ranking', details: 'Combine keyword and vector search, and re-rank results for higher relevance.', tasks: '[ ] Understand BM25 + Vector hybrid search; [ ] Implement Cohere/CrossEncoder Re-ranker; [ ] Compare raw vs re-ranked results' },
+      { day: 27, title: 'Building an End-to-End RAG Pipeline', details: 'Combine loaders, splitters, vector DBs, and LLMs into a complete QA system.', tasks: '[ ] Build full RAG chain in LangChain; [ ] Test QA on a complex PDF; [ ] Add conversation history to RAG' },
+      { day: 28, title: 'Week 4 Review & Rest', details: 'Review chunking, retrieval, and re-ranking techniques.', tasks: '[ ] Document your RAG pipeline architecture; [ ] Identify failure modes of your RAG; [ ] Rest' }
+    ]
+  },
+  {
+    week: 5,
+    focus: 'Function Calling & Tool Use',
+    summary: 'Enable LLMs to interact with the outside world by providing custom tools and structured outputs.',
+    days: [
+      { day: 29, title: 'Introduction to Function Calling', details: 'Learn how OpenAI and other models support native function calling.', tasks: '[ ] Read OpenAI function calling docs; [ ] Define a simple JSON schema for a function; [ ] Trigger a function call via API' },
+      { day: 30, title: 'Structured Output Enforcement', details: 'Force the LLM to reply with valid structured data every time.', tasks: '[ ] Use OpenAI JSON mode; [ ] Implement strict schema adherence with Pydantic; [ ] Handle nested object schemas' },
+      { day: 31, title: 'Building Custom Tools in LangChain', details: 'Wrap Python functions into LangChain Tools.', tasks: '[ ] Create a @tool decorated function; [ ] Build a tool that fetches live weather; [ ] Build a calculator tool' },
+      { day: 32, title: 'Tool Calling with LCEL', details: 'Bind tools to a model and invoke them using LangChain Expression Language.', tasks: '[ ] Use bind_tools() on a ChatModel; [ ] Parse tool calls from model output; [ ] Execute tool and return result to model' },
+      { day: 33, title: 'Handling Tool Errors', details: 'Gracefully handle cases where the model hallucinates tools or passes wrong arguments.', tasks: '[ ] Implement a fallback mechanism for tool errors; [ ] Prompt the model to correct its tool arguments; [ ] Log tool execution failures' },
+      { day: 34, title: 'Multi-Tool Orchestration', details: 'Give the LLM a toolkit and let it choose the right tool for the query.', tasks: '[ ] Provide 3+ tools to the model; [ ] Ask a query requiring sequential tool use; [ ] Trace the execution path' },
+      { day: 35, title: 'Week 5 Review & Rest', details: 'Review function calling schemas and tool binding.', tasks: '[ ] Build a mini-assistant that searches Wikipedia and calculates; [ ] Review JSON schemas; [ ] Rest' }
+    ]
+  },
+  {
+    week: 6,
+    focus: 'ReAct Agents & LangChain Agents',
+    summary: 'Understand the ReAct (Reason + Act) paradigm and build autonomous agents using AgentExecutor.',
+    days: [
+      { day: 36, title: 'The ReAct Paradigm', details: 'Study the ReAct paper and understand the Thought-Action-Observation loop.', tasks: '[ ] Read the ReAct paper; [ ] Manually simulate a ReAct loop; [ ] Understand the prompt structure for ReAct' },
+      { day: 37, title: 'LangChain AgentExecutor Basic', details: 'Initialize and run a standard LangChain agent.', tasks: '[ ] Create a create_tool_calling_agent; [ ] Run it via AgentExecutor; [ ] Observe the intermediate steps' },
+      { day: 38, title: 'Agent Memory & Context', details: 'Give agents conversational memory so they remember previous turns.', tasks: '[ ] Add memory to AgentExecutor; [ ] Test multi-turn conversations requiring tool use; [ ] Manage token limits in memory' },
+      { day: 39, title: 'Customizing Agent Prompts', details: 'Modify the default agent prompt to give it a specific persona and rules.', tasks: '[ ] Extract and modify the base agent prompt; [ ] Add strict rules for tool usage; [ ] Test edge cases where agent misbehaves' },
+      { day: 40, title: 'Debugging Agents', details: 'Learn to trace agent thoughts and handle infinite loops.', tasks: '[ ] Set up basic logging for intermediate steps; [ ] Force an infinite loop and implement max_iterations; [ ] Add early stopping methods' },
+      { day: 41, title: 'Plan-and-Execute Agents', details: 'Explore agents that plan upfront before executing steps.', tasks: '[ ] Understand Plan-and-Solve concepts; [ ] Build a basic planner LLM step; [ ] Build an executor step' },
+      { day: 42, title: 'Week 6 Review & Rest', details: 'Review the ReAct loop and AgentExecutor mechanics.', tasks: '[ ] Build an agent that interacts with a SQLite DB; [ ] Document the ReAct flow; [ ] Rest' }
+    ]
+  },
+  {
+    week: 7,
+    focus: 'LangGraph Foundations',
+    summary: 'Move beyond linear chains and AgentExecutor to build cyclical, stateful graphs of LLM interactions using LangGraph.',
+    days: [
+      { day: 43, title: 'Introduction to LangGraph', details: 'Understand why we need state graphs for complex agentic workflows.', tasks: '[ ] Read LangGraph introductory docs; [ ] Understand Nodes, Edges, and State; [ ] Set up a basic graph environment' },
+      { day: 44, title: 'Defining Graph State', details: 'Create a typed state dictionary that gets passed between nodes.', tasks: '[ ] Define a TypedDict for State; [ ] Understand reducers (e.g., appending messages); [ ] Initialize a StateGraph' },
+      { day: 45, title: 'Nodes and Conditional Edges', details: 'Build nodes that call LLMs or tools, and edges that route based on logic.', tasks: '[ ] Create a model node and tool node; [ ] Implement a conditional edge for routing; [ ] Compile the graph' },
+      { day: 46, title: 'Building a ReAct Agent in LangGraph', details: 'Recreate the AgentExecutor functionality manually using LangGraph.', tasks: '[ ] Map ReAct loop to graph nodes; [ ] Implement the `should_continue` edge logic; [ ] Run the graph and trace output' },
+      { day: 47, title: 'Human-in-the-Loop', details: 'Pause graph execution to wait for human approval or input.', tasks: '[ ] Add a breakpoint to a graph; [ ] Inspect state at the breakpoint; [ ] Resume graph execution with human feedback' },
+      { day: 48, title: 'Time Travel & State Modification', details: 'Explore LangGraph checkpointer to rewind and edit state.', tasks: '[ ] Implement MemorySaver checkpointer; [ ] Fetch graph history; [ ] Rewind to a previous state, modify it, and fork execution' },
+      { day: 49, title: 'Week 7 Review & Rest', details: 'Review LangGraph fundamentals and checkpointers.', tasks: '[ ] Diagram your LangGraph ReAct agent; [ ] Review state reducers; [ ] Rest' }
+    ]
+  },
+  {
+    week: 8,
+    focus: 'Multi-Agent Systems',
+    summary: 'Design systems where multiple specialized agents collaborate, using Supervisor patterns and frameworks like AutoGen.',
+    days: [
+      { day: 50, title: 'Multi-Agent Concepts', details: 'Understand the benefits of splitting tasks among specialized agents rather than one monolithic agent.', tasks: '[ ] Read about multi-agent architectures; [ ] Identify a use case for multiple agents; [ ] Design agent personas' },
+      { day: 51, title: 'Supervisor Pattern in LangGraph', details: 'Build a supervisor agent that delegates tasks to worker agents.', tasks: '[ ] Create worker nodes (e.g., Researcher, Coder); [ ] Create a Supervisor node with routing logic; [ ] Wire them into a LangGraph' },
+      { day: 52, title: 'Hierarchical Agent Teams', details: 'Scale the supervisor pattern into sub-teams.', tasks: '[ ] Design a complex graph with sub-graphs; [ ] Implement a Top-Level Supervisor; [ ] Run a multi-step research and write task' },
+      { day: 53, title: 'Introduction to AutoGen', details: 'Explore Microsoft AutoGen as an alternative multi-agent framework.', tasks: '[ ] Install AutoGen; [ ] Set up two agents chatting with each other; [ ] Review AutoGen conversational patterns' },
+      { day: 54, title: 'AutoGen Group Chat', details: 'Implement a GroupChatManager to handle 3+ agents.', tasks: '[ ] Configure GroupChatManager; [ ] Add UserProxy, Coder, and Reviewer agents; [ ] Solve a coding task collaboratively' },
+      { day: 55, title: 'Comparing LangGraph & AutoGen', details: 'Evaluate the pros and cons of state-machine vs conversational multi-agent frameworks.', tasks: '[ ] Write a comparison table; [ ] Replicate a LangGraph workflow in AutoGen; [ ] Decide when to use which' },
+      { day: 56, title: 'Week 8 Review & Rest', details: 'Review multi-agent orchestration and delegation.', tasks: '[ ] Document your multi-agent architecture; [ ] Review worker prompts; [ ] Rest' }
+    ]
+  },
+  {
+    week: 9,
+    focus: 'Production RAG',
+    summary: 'Take RAG from prototype to production with advanced evaluation (RAGAS), caching, and optimization.',
+    days: [
+      { day: 57, title: 'RAG Evaluation Frameworks', details: 'Learn to quantify RAG performance objectively instead of just "eyeballing" it.', tasks: '[ ] Study RAGAS metrics (Faithfulness, Answer Relevance); [ ] Create a golden dataset of QA pairs; [ ] Run a baseline evaluation' },
+      { day: 58, title: 'Evaluating Context Precision & Recall', details: 'Measure how well your retriever fetches the exact right chunks.', tasks: '[ ] Calculate Context Precision; [ ] Calculate Context Recall; [ ] Identify if failures are due to retrieval or generation' },
+      { day: 59, title: 'LLM Caching & Cost Reduction', details: 'Implement caching to save money and reduce latency for repeated queries.', tasks: '[ ] Setup SQLite/Redis cache for LangChain; [ ] Implement Semantic Caching; [ ] Measure latency difference' },
+      { day: 60, title: 'Handling Hallucinations & Citations', details: 'Force the LLM to cite its sources and implement self-correction.', tasks: '[ ] Add citation requirement to prompt; [ ] Parse citations to highlight source chunks; [ ] Implement a hallucination-check step' },
+      { day: 61, title: 'Query Transformation', details: 'Rewrite user queries to improve retrieval performance (e.g., HyDE, Query Expansion).', tasks: '[ ] Implement query rewriting; [ ] Implement HyDE (Hypothetical Document Embeddings); [ ] Evaluate impact on retrieval' },
+      { day: 62, title: 'Fine-Tuning Embeddings', details: 'Learn how to fine-tune an embedding model for domain-specific vocabulary.', tasks: '[ ] Study SentenceTransformers fine-tuning; [ ] Prepare synthetic triplet dataset; [ ] Run fine-tuning on a small dataset' },
+      { day: 63, title: 'Week 9 Review & Rest', details: 'Review evaluation metrics and RAG optimization strategies.', tasks: '[ ] Run full RAGAS eval on improved pipeline; [ ] Document cost-saving measures; [ ] Rest' }
+    ]
+  },
+  {
+    week: 10,
+    focus: 'Deployment & LLMOps',
+    summary: 'Deploy your agentic applications using FastAPI, Docker, and monitor them with LangSmith.',
+    days: [
+      { day: 64, title: 'Tracing with LangSmith', details: 'Set up comprehensive tracing to see exactly what your chains and agents are doing.', tasks: '[ ] Create LangSmith account & API key; [ ] Instrument your LangGraph code; [ ] Analyze a trace in the LangSmith UI' },
+      { day: 65, title: 'Building the Backend - FastAPI', details: 'Wrap your LangChain/LangGraph logic in a robust REST API.', tasks: '[ ] Setup a FastAPI project; [ ] Create endpoints for chat and tool execution; [ ] Implement streaming responses (Server-Sent Events)' },
+      { day: 66, title: 'LangServe Basics', details: 'Use LangServe to automatically generate API endpoints for LangChain runnables.', tasks: '[ ] Install LangServe; [ ] Expose an LCEL chain as an API; [ ] Test the built-in playground UI' },
+      { day: 67, title: 'Frontend Integration', details: 'Connect a simple React or Streamlit frontend to your agent backend.', tasks: '[ ] Build a Streamlit chat interface; [ ] Connect to FastAPI streaming endpoint; [ ] Render agent intermediate steps' },
+      { day: 68, title: 'Containerization with Docker', details: 'Dockerize your agent backend for consistent deployment.', tasks: '[ ] Write a Dockerfile for the FastAPI app; [ ] Handle API key secrets securely; [ ] Run the container locally' },
+      { day: 69, title: 'Cloud Deployment', details: 'Deploy your Docker container to a cloud provider (AWS, GCP, Render).', tasks: '[ ] Setup cloud hosting account; [ ] Deploy the Docker container; [ ] Test the live endpoint' },
+      { day: 70, title: 'Week 10 Review & Rest', details: 'Review tracing, FastAPI, and Docker concepts.', tasks: '[ ] Monitor LangSmith for live traffic; [ ] Document deployment steps; [ ] Rest' }
+    ]
+  },
+  {
+    week: 11,
+    focus: 'Capstone Project Sprint',
+    summary: 'Synthesize everything you have learned by building a full-stack, multi-agent RAG application.',
+    days: [
+      { day: 71, title: 'Capstone Ideation & Architecture', details: 'Define the scope, use case, and architecture for your capstone project.', tasks: '[ ] Write project spec document; [ ] Design system architecture diagram; [ ] Define the agent graph structure' },
+      { day: 72, title: 'Data Ingestion & Vector Store setup', details: 'Scrape, chunk, and index the domain-specific data for your project.', tasks: '[ ] Run document ingestion pipeline; [ ] Validate vector store quality; [ ] Setup cloud vector DB (e.g., Pinecone)' },
+      { day: 73, title: 'Developing Agent Logic', details: 'Build the core LangGraph state machine and custom tools.', tasks: '[ ] Implement custom tools; [ ] Write and test LangGraph nodes; [ ] Debug routing logic' },
+      { day: 74, title: 'Backend API & Streaming', details: 'Wrap the agent logic in FastAPI and handle streaming.', tasks: '[ ] Connect graph to FastAPI endpoint; [ ] Implement async execution; [ ] Handle websocket/SSE streaming' },
+      { day: 75, title: 'Frontend Development', details: 'Build a polished user interface for interacting with the agent.', tasks: '[ ] Implement chat UI; [ ] Show citations and tool calls in UI; [ ] Polish styling' },
+      { day: 76, title: 'Testing & Optimization', details: 'Run evaluations, add caching, and fix edge case bugs.', tasks: '[ ] Run RAGAS eval on capstone; [ ] Add error boundaries in UI; [ ] Optimize prompt token usage' },
+      { day: 77, title: 'Week 11 Review & Rest', details: 'Take a break before the final push and interview prep.', tasks: '[ ] Finalize project README; [ ] Record a demo video; [ ] Rest' }
+    ]
+  },
+  {
+    week: 12,
+    focus: 'Portfolio Polish & Interview Prep',
+    summary: 'Prepare to showcase your agentic AI skills to employers and nail technical interviews.',
+    days: [
+      { day: 78, title: 'Resume & Portfolio Update', details: 'Add your new Agentic AI skills and capstone project to your resume.', tasks: '[ ] Update resume with LangChain/LangGraph keywords; [ ] Link capstone repo & live demo; [ ] Update LinkedIn headline' },
+      { day: 79, title: 'System Design Interview Prep', details: 'Practice designing scalable AI/RAG systems on a whiteboard.', tasks: '[ ] Design a scalable Enterprise Search system; [ ] Discuss Vector DB scaling tradeoffs; [ ] Address LLM latency issues' },
+      { day: 80, title: 'AI/ML Engineering Questions', details: 'Review common interview questions on LLMs, attention, and prompt engineering.', tasks: '[ ] Explain the self-attention formula out loud; [ ] Compare RAG vs Fine-tuning; [ ] Discuss evaluation metrics' },
+      { day: 81, title: 'Behavioral & STAR Stories', details: 'Prepare stories about challenges you faced while building your capstone.', tasks: '[ ] Draft STAR story for debugging a complex agent loop; [ ] Draft story for optimizing RAG performance; [ ] Practice delivery' },
+      { day: 82, title: 'Mock Interview (Technical)', details: 'Conduct a mock technical interview focusing on Agentic AI.', tasks: '[ ] Solve a live coding problem; [ ] Answer rapid-fire LLM questions; [ ] Self-evaluate performance' },
+      { day: 83, title: 'Apply to Roles & Network', details: 'Start submitting applications for AI Engineer / LLM Engineer roles.', tasks: '[ ] Apply to 5 AI Engineer roles; [ ] Reach out to 2 recruiters on LinkedIn; [ ] Share capstone demo on Twitter/LinkedIn' },
+      { day: 84, title: 'Graduation & Next Steps', details: 'Celebrate your achievement and plan your continuous learning path.', tasks: '[ ] Celebrate 12 weeks of hard work!; [ ] Plan to keep up with AI papers; [ ] Relax and await interview calls' }
+    ]
+  }
+];
+
 const TRACKS = [
   { id: 'swe', name: '💻 Software Engineering', data: SWE_ROADMAP },
   { id: 'de', name: '🎛️ Data Engineering', data: DE_ROADMAP },
   { id: 'ml', name: '🧠 Machine Learning & AI', data: ML_ROADMAP },
+  { id: 'data_ai', name: '🤖 Data & Agentic AI Engineer', data: DATA_AI_ROADMAP },
+  { id: 'agentic', name: '🤖 Agentic AI Engineer (12-Week)', data: AGENTIC_AI_ROADMAP },
   { id: 'ai', name: '✨ Custom AI', data: null }
 ];
 

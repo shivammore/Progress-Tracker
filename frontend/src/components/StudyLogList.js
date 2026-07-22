@@ -53,16 +53,40 @@ export default function StudyLogList() {
     window.history.replaceState({}, document.title, window.location.pathname);
   };
 
+  const [sortField, setSortField] = useState('date');
+  const [sortDir, setSortDir] = useState('desc');
+
   const filteredLogs = logs.filter(log => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
     return (log.topic || '').toLowerCase().includes(q) || (log.subtopic || '').toLowerCase().includes(q);
+  }).sort((a, b) => {
+    let valA = a[sortField];
+    let valB = b[sortField];
+    if (typeof valA === 'string') valA = valA.toLowerCase();
+    if (typeof valB === 'string') valB = valB.toLowerCase();
+    
+    if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+    if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+    return 0;
   });
+
+  const toggleSort = (field) => {
+    if (sortField === field) setSortDir(prev => prev === 'asc' ? 'desc' : 'asc');
+    else { setSortField(field); setSortDir('desc'); }
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <span style={{ opacity: 0.3, marginLeft: '4px' }}>↕</span>;
+    return <span style={{ marginLeft: '4px' }}>{sortDir === 'asc' ? '↑' : '↓'}</span>;
+  };
+
+  const uniqueTopics = [...new Set(logs.map(l => l.topic).filter(Boolean))].sort();
 
   return (
     <div className="dashboard-grid">
       <div className="dp-left-col">
-      <StudyLogForm onSuccess={loadLogs} defaultTopic={initialTopic} defaultDate={initialDate} />
+      <StudyLogForm onSuccess={loadLogs} defaultTopic={initialTopic} defaultDate={initialDate} availableTopics={uniqueTopics} />
 
       {/* Filter and Search Bar */}
       <div style={{
@@ -94,11 +118,11 @@ export default function StudyLogList() {
         <table className="styled-table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Topic</th>
-              <th>Subtopic</th>
-              <th>Hours</th>
-              <th>Confidence</th>
+              <th onClick={() => toggleSort('date')} style={{ cursor: 'pointer' }}>Date <SortIcon field="date" /></th>
+              <th onClick={() => toggleSort('topic')} style={{ cursor: 'pointer' }}>Topic <SortIcon field="topic" /></th>
+              <th onClick={() => toggleSort('subtopic')} style={{ cursor: 'pointer' }}>Subtopic <SortIcon field="subtopic" /></th>
+              <th onClick={() => toggleSort('hours')} style={{ cursor: 'pointer' }}>Hours <SortIcon field="hours" /></th>
+              <th onClick={() => toggleSort('confidence')} style={{ cursor: 'pointer' }}>Confidence <SortIcon field="confidence" /></th>
               <th>Actions</th>
             </tr>
           </thead>

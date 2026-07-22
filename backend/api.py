@@ -7,12 +7,13 @@ from models import (
 from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Dict, Any
 from datetime import date, timedelta, datetime
-from sqlalchemy import func
+from sqlalchemy import func, or_
 router = APIRouter()
 
 from models import User
 from auth import get_current_user, create_access_token, get_password_hash, verify_password
 from fastapi.security import OAuth2PasswordRequestForm
+import httpx
 
 
 
@@ -56,6 +57,78 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     access_token = create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
+
+# ============================================================
+# AI Proxy Endpoint
+# ============================================================
+class AIProxyRequest(BaseModel):
+    gateway_url: str
+    api_key: str
+    model_name: str
+    prompt: str
+    history: List[Dict[str, str]] = []
+    max_output_tokens: Optional[int] = None
+    system_instruction: Optional[str] = None
+
+@router.post("/ai/proxy")
+async def ai_proxy(req: AIProxyRequest, current_user: User = Depends(get_current_user)):
+    if not req.api_key:
+        raise HTTPException(status_code=400, detail="API Key is missing")
+    
+    is_gemini = "generativelanguage.googleapis.com" in req.gateway_url
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            if is_gemini:
+                base_url = req.gateway_url.rstrip('/')
+                if not base_url.endswith("models"):
+                    if base_url.endswith("v1beta"):
+                        base_url += "/models"
+                    else:
+                        base_url += "/v1beta/models"
+                url = f"{base_url}/{req.model_name}:generateContent?key={req.api_key}"
+                headers = {"Content-Type": "application/json"}
+                contents = []
+                for msg in req.history:
+                    contents.append({"role": "user" if msg["role"] == "user" else "model", "parts": [{"text": msg["content"]}]})
+                contents.append({"role": "user", "parts": [{"text": req.prompt}]})
+                payload = {"contents": contents}
+                # Add generation config if max_output_tokens specified
+                if req.max_output_tokens:
+                    payload["generationConfig"] = {"maxOutputTokens": req.max_output_tokens, "temperature": 0.7}
+                # Add system instruction if specified
+                if req.system_instruction:
+                    payload["system_instruction"] = {"parts": [{"text": req.system_instruction}]}
+            else:
+                if req.gateway_url.endswith("/chat/completions"):
+                    url = req.gateway_url
+                elif req.gateway_url.rstrip('/').endswith("/v1"):
+                    url = f"{req.gateway_url.rstrip('/')}/chat/completions"
+                else:
+                    url = f"{req.gateway_url.rstrip('/')}/v1/chat/completions"
+                headers = {"Content-Type": "application/json", "Authorization": f"Bearer {req.api_key}"}
+                messages = []
+                if req.system_instruction:
+                    messages.append({"role": "system", "content": req.system_instruction})
+                for msg in req.history:
+                    messages.append({"role": "assistant" if msg["role"] == "model" else msg["role"], "content": msg["content"]})
+                messages.append({"role": "user", "content": req.prompt})
+                payload = {"model": req.model_name, "messages": messages, "temperature": 0.7}
+                if req.max_output_tokens:
+                    payload["max_tokens"] = req.max_output_tokens
+
+            resp = await client.post(url, json=payload, headers=headers)
+            
+            if resp.status_code != 200:
+                raise HTTPException(status_code=resp.status_code, detail=f"Proxy to {url} failed with {resp.status_code}: {resp.text}")
+                
+            return resp.json()
+        except HTTPException:
+            raise
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Proxy error ({url}): {str(e)}")
 
 # ============================================================
 # Pydantic Schemas
@@ -445,18 +518,18 @@ def create_milestone(milestone: ProjectMilestoneCreate, db: Session = Depends(ge
 
 @router.get("/milestones/", response_model=List[ProjectMilestoneOut])
 def get_milestones(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id, ProjectMilestone.user_id == current_user.id).offset(skip).limit(limit).all()
+    return db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id).offset(skip).limit(limit).all()
 
 @router.get("/milestones/{milestone_id}", response_model=ProjectMilestoneOut)
 def get_milestone(milestone_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    milestone = db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id, ProjectMilestone.user_id == current_user.id).filter(ProjectMilestone.id == milestone_id).first()
+    milestone = db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id).filter(ProjectMilestone.id == milestone_id).first()
     if not milestone:
         raise HTTPException(status_code=404, detail="Milestone not found")
     return milestone
 
 @router.put("/milestones/{milestone_id}", response_model=ProjectMilestoneOut)
 def update_milestone(milestone_id: int, milestone: ProjectMilestoneCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_milestone = db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id, ProjectMilestone.user_id == current_user.id).filter(ProjectMilestone.id == milestone_id).first()
+    db_milestone = db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id).filter(ProjectMilestone.id == milestone_id).first()
     if not db_milestone:
         raise HTTPException(status_code=404, detail="Milestone not found")
     for k, v in milestone.model_dump().items():
@@ -467,7 +540,7 @@ def update_milestone(milestone_id: int, milestone: ProjectMilestoneCreate, db: S
 
 @router.delete("/milestones/{milestone_id}")
 def delete_milestone(milestone_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    db_milestone = db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id, ProjectMilestone.user_id == current_user.id).filter(ProjectMilestone.id == milestone_id).first()
+    db_milestone = db.query(ProjectMilestone).filter(ProjectMilestone.user_id == current_user.id).filter(ProjectMilestone.id == milestone_id).first()
     if not db_milestone:
         raise HTTPException(status_code=404, detail="Milestone not found")
     db.delete(db_milestone)
@@ -478,6 +551,91 @@ def delete_milestone(milestone_id: int, db: Session = Depends(get_db), current_u
 # ============================================================
 # CRUD Endpoints — QuestionBank
 # ============================================================
+@router.post("/questions/seed-agentic-ai")
+def seed_agentic_ai_questions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    seed_data = [
+        # LLM Fundamentals
+        ("LLM Fundamentals", "What is the attention mechanism in Transformers?", "A technique that allows the model to dynamically weigh the importance of different parts of the input sequence for each output token."),
+        ("LLM Fundamentals", "What is a token in the context of LLMs?", "The basic unit of data processed by an LLM, which could be a word, part of a word, or a character depending on the tokenizer."),
+        ("LLM Fundamentals", "What is the temperature parameter?", "A setting that controls the randomness of the model's output. Lower values make output more deterministic, higher values make it more diverse."),
+        ("LLM Fundamentals", "What is Top-p (nucleus) sampling?", "A decoding method where the model selects from the smallest set of tokens whose cumulative probability exceeds the threshold p."),
+        ("LLM Fundamentals", "What is Context Window limit?", "The maximum number of tokens an LLM can process at once, including both prompt and generated response."),
+        ("LLM Fundamentals", "Explain KV Cache.", "A memory optimization technique in transformers that stores Key and Value tensors from previous layers to avoid redundant computations during autoregressive generation."),
+        ("LLM Fundamentals", "What is an embedding?", "A dense vector representation of text that captures semantic meaning, used heavily in search and RAG."),
+        
+        # Prompt Engineering
+        ("Prompt Engineering", "What is Zero-Shot Prompting?", "Asking an LLM to perform a task without providing any examples in the prompt."),
+        ("Prompt Engineering", "What is Few-Shot Prompting?", "Providing a few examples (input-output pairs) in the prompt to guide the LLM's response."),
+        ("Prompt Engineering", "Explain Chain-of-Thought (CoT) prompting.", "Prompting the LLM to 'think step-by-step', generating intermediate reasoning steps before providing the final answer."),
+        ("Prompt Engineering", "What is Tree of Thoughts (ToT)?", "An extension of CoT that explores multiple reasoning paths concurrently and evaluates them to solve complex problems."),
+        ("Prompt Engineering", "What is React (Reasoning and Acting) prompting?", "A paradigm where the model alternates between reasoning steps and taking actions (like querying an API)."),
+        ("Prompt Engineering", "What is the role of a System Prompt?", "To set the persona, global instructions, and constraints for the LLM's behavior throughout a conversation."),
+        ("Prompt Engineering", "What is prompt injection?", "A vulnerability where malicious users craft inputs that override or manipulate the original instructions given to the LLM."),
+
+        # RAG Architecture
+        ("RAG Architecture", "What does RAG stand for?", "Retrieval-Augmented Generation."),
+        ("RAG Architecture", "What is the primary purpose of RAG?", "To ground LLM responses in external, up-to-date, or proprietary data, reducing hallucinations."),
+        ("RAG Architecture", "What is a Vector Database?", "A database optimized for storing and querying high-dimensional vectors (embeddings) using nearest neighbor search."),
+        ("RAG Architecture", "Name three common chunking strategies.", "Fixed-size, sentence-level, and semantic chunking."),
+        ("RAG Architecture", "What is Cosine Similarity?", "A metric used to measure the similarity between two vectors by calculating the cosine of the angle between them."),
+        ("RAG Architecture", "What is Re-ranking in RAG?", "A second-stage retrieval process that scores and re-orders the initial retrieved documents to improve relevance."),
+        ("RAG Architecture", "What is Hyde (Hypothetical Document Embeddings)?", "A technique where an LLM generates a hypothetical answer to a query, and that answer's embedding is used for retrieval."),
+        ("RAG Architecture", "What is chunk overlap?", "Including a portion of the previous chunk in the next chunk to preserve context across boundaries."),
+
+        # LangChain
+        ("LangChain", "What is LangChain?", "A framework for developing applications powered by language models, providing tools for chaining, memory, and agents."),
+        ("LangChain", "What is a Chain in LangChain?", "A sequence of calls to LLMs, tools, or data processing utilities linked together to accomplish a task."),
+        ("LangChain", "How does LangChain handle Memory?", "It provides classes (like ConversationBufferMemory) to store and inject past interactions into the current prompt."),
+        ("LangChain", "What are Document Loaders?", "Utilities in LangChain designed to load data from various sources (PDFs, web pages, databases) into standard Document objects."),
+        ("LangChain", "What is an Output Parser?", "A LangChain component that formats the raw text output from an LLM into a structured format like JSON or lists."),
+        ("LangChain", "What is a Retriever in LangChain?", "An interface that takes a query and returns relevant documents, abstracting the underlying vector store or search engine."),
+        ("LangChain", "Explain the concept of Runnables in LCEL.", "The core abstraction in LangChain Expression Language allowing components to be easily composed using the pipe (|) operator."),
+
+        # Function Calling
+        ("Function Calling", "What is Function Calling in LLMs?", "The capability of an LLM to output structured JSON matching a predefined function signature, indicating that the function should be executed."),
+        ("Function Calling", "Why use Function Calling over raw text parsing?", "It provides more reliable, deterministic structured output enforced by the model's API, rather than relying on brittle regex or prompting."),
+        ("Function Calling", "What format are function signatures usually defined in?", "JSON Schema."),
+        ("Function Calling", "Can an LLM execute the function itself?", "No, the LLM only suggests the function and arguments. The application code must execute it and return the result to the LLM."),
+        ("Function Calling", "What is Parallel Function Calling?", "The ability of an LLM to request the execution of multiple independent functions in a single response."),
+        ("Function Calling", "How is the function result passed back to the LLM?", "As a new message in the chat history, typically with a role like 'tool' or 'function'."),
+        ("Function Calling", "What happens if the LLM hallucinates an argument?", "The application will likely throw an error during execution. Robust implementations validate arguments before execution."),
+
+        # Agents
+        ("Agents", "What defines an AI Agent?", "An AI system that uses an LLM as a reasoning engine to determine a sequence of actions, use tools, and interact with an environment to achieve a goal."),
+        ("Agents", "What is the difference between an Agent and a Chain?", "A Chain has a hardcoded sequence of steps. An Agent uses the LLM to dynamically decide which steps and tools to use."),
+        ("Agents", "What is a Tool in the context of Agents?", "An external capability the agent can invoke, such as a calculator, web search, or database query."),
+        ("Agents", "What is the ReAct framework?", "Reasoning and Acting - an approach where agents explicitly output their thought process before deciding on an action."),
+        ("Agents", "What is an Observation in Agent loops?", "The result or output returned after an agent executes a specific action or tool."),
+        ("Agents", "What is a multi-agent system?", "A system where multiple specialized AI agents collaborate, delegate tasks, or debate to solve complex problems."),
+        ("Agents", "What is a Plan-and-Solve Agent?", "An agent that first generates a high-level step-by-step plan, then executes each step sequentially."),
+
+        # LangGraph
+        ("LangGraph", "What is LangGraph?", "An extension of LangChain for building stateful, multi-actor applications with cyclic computational steps using graph structures."),
+        ("LangGraph", "Why use LangGraph instead of standard Agents?", "It provides finer control over agent loops, state management, and multi-agent coordination by defining the flow as a state machine."),
+        ("LangGraph", "What is a Node in LangGraph?", "A function or computational step that takes the current state and returns an update to the state."),
+        ("LangGraph", "What is an Edge in LangGraph?", "The connections that dictate the flow between nodes, including conditional edges that route based on the state."),
+        ("LangGraph", "How is State managed in LangGraph?", "Through a defined State schema (like a TypedDict) that gets passed and updated from node to node."),
+        ("LangGraph", "What is a Conditional Edge?", "A routing function in LangGraph that decides which node to execute next based on the current state."),
+        ("LangGraph", "Does LangGraph support cyclical flows?", "Yes, unlike traditional LangChain LCEL, LangGraph natively supports cycles (loops), which are essential for agentic behavior.")
+    ]
+
+    count = 0
+    for topic, question, answer in seed_data:
+        db_question = QuestionBank(
+            user_id=current_user.id,
+            topic=topic,
+            question=question,
+            answer=answer,
+            difficulty='Medium',
+            repetition=0,
+            interval=0,
+            easiness_factor=2.5
+        )
+        db.add(db_question)
+        count += 1
+    
+    db.commit()
+    return {"message": f"Successfully seeded {count} Agentic AI flashcards"}
 @router.post("/questions/", response_model=QuestionBankOut)
 def create_question(question: QuestionBankCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     db_question = QuestionBank(**question.model_dump(), user_id=current_user.id)
@@ -486,10 +644,31 @@ def create_question(question: QuestionBankCreate, db: Session = Depends(get_db),
     db.refresh(db_question)
     return db_question
 
-@router.get("/questions/", response_model=List[QuestionBankOut])
-def get_questions(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return db.query(QuestionBank).filter(QuestionBank.user_id == current_user.id, QuestionBank.user_id == current_user.id).offset(skip).limit(limit).all()
+@router.post("/questions/bulk", response_model=List[QuestionBankOut])
+def create_questions_bulk(questions: List[QuestionBankCreate], db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    db_questions = []
+    for q in questions:
+        db_q = QuestionBank(**q.model_dump(), user_id=current_user.id, next_review_date=date.today())
+        db.add(db_q)
+        db_questions.append(db_q)
+    db.commit()
+    for db_q in db_questions:
+        db.refresh(db_q)
+    return db_questions
 
+@router.get("/questions/", response_model=List[QuestionBankOut])
+def get_questions(skip: int = 0, limit: int = 100, topic: Optional[str] = None, due_only: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    query = db.query(QuestionBank).filter(QuestionBank.user_id == current_user.id)
+    if topic:
+        query = query.filter(QuestionBank.topic.ilike(f"%{topic}%"))
+    if due_only:
+        query = query.filter(
+            or_(
+                QuestionBank.next_review_date.is_(None),
+                QuestionBank.next_review_date <= date.today()
+            )
+        )
+    return query.order_by(QuestionBank.next_review_date.asc()).offset(skip).limit(limit).all()
 @router.get("/questions/{question_id}", response_model=QuestionBankOut)
 def get_question(question_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     question = db.query(QuestionBank).filter(QuestionBank.user_id == current_user.id, QuestionBank.user_id == current_user.id).filter(QuestionBank.id == question_id).first()
@@ -753,7 +932,7 @@ def get_analytics_summary(db: Session = Depends(get_db), current_user: User = De
     total_mocks = db.query(MockInterview).filter(MockInterview.user_id == current_user.id, MockInterview.user_id == current_user.id).count()
     
     # 2. Upcoming Daily Plans (Next 5 not done)
-    upcoming_plans = db.query(DailyPlan).filter(DailyPlan.user_id == current_user.id, DailyPlan.user_id == current_user.id).filter(
+    upcoming_plans = db.query(DailyPlan).filter(DailyPlan.user_id == current_user.id).filter(
         DailyPlan.date >= today,
         ~DailyPlan.status.ilike("%done%")
     ).order_by(DailyPlan.date.asc()).limit(5).all()
@@ -761,16 +940,16 @@ def get_analytics_summary(db: Session = Depends(get_db), current_user: User = De
     # 3. Questions by Topic
     questions_by_topic = db.query(
         QuestionBank.topic, func.count(QuestionBank.id)
-    ).group_by(QuestionBank.topic).all()
+    ).filter(QuestionBank.user_id == current_user.id).group_by(QuestionBank.topic).all()
     
     # 4. Job App Pipeline (Statuses)
     app_pipeline = db.query(
         JobApplication.status, func.count(JobApplication.id)
-    ).group_by(JobApplication.status).all()
+    ).filter(JobApplication.user_id == current_user.id).group_by(JobApplication.status).all()
     
     # 5. Study Hours (Last 8 Weeks)
     eight_weeks_ago = today - timedelta(days=56)
-    study_logs = db.query(StudyLog).filter(StudyLog.user_id == current_user.id, StudyLog.user_id == current_user.id).filter(StudyLog.date >= eight_weeks_ago).all()
+    study_logs = db.query(StudyLog).filter(StudyLog.user_id == current_user.id).filter(StudyLog.date >= eight_weeks_ago).all()
     # Group in python for simplicity
     study_by_week = {}
     for log in study_logs:
@@ -782,13 +961,13 @@ def get_analytics_summary(db: Session = Depends(get_db), current_user: User = De
         study_by_week[week_str] = study_by_week.get(week_str, 0) + log.hours
     
     # 6. Upcoming Reminders
-    upcoming_reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id, Reminder.user_id == current_user.id).filter(
+    upcoming_reminders = db.query(Reminder).filter(Reminder.user_id == current_user.id).filter(
         Reminder.completed == False
     ).order_by(Reminder.due_date.asc()).limit(10).all()
     
     # 7. Recent Activity (Latest 5 Study Logs)
     recent_activity = []
-    recent_logs = db.query(StudyLog).filter(StudyLog.user_id == current_user.id, StudyLog.user_id == current_user.id).order_by(StudyLog.date.desc()).limit(5).all()
+    recent_logs = db.query(StudyLog).filter(StudyLog.user_id == current_user.id).order_by(StudyLog.date.desc()).limit(5).all()
     for log in recent_logs:
         recent_activity.append({
             "type": "study",
@@ -814,7 +993,7 @@ def get_analytics_summary(db: Session = Depends(get_db), current_user: User = De
     # 9. Smart Study Recommendations (Topics with lowest confidence)
     low_confidence_topics = db.query(
         QuestionBank.topic, func.avg(QuestionBank.confidence)
-    ).group_by(QuestionBank.topic).order_by(func.avg(QuestionBank.confidence).asc()).limit(3).all()
+    ).filter(QuestionBank.user_id == current_user.id).group_by(QuestionBank.topic).order_by(func.avg(QuestionBank.confidence).asc()).limit(3).all()
     study_recommendations = [{"topic": row[0], "avg_confidence": float(row[1] or 0)} for row in low_confidence_topics if row[1] is not None and row[1] < 4.0]
 
     # 10. Gamification & XP
@@ -932,7 +1111,7 @@ def export_db_to_csv_zip(db: Session = Depends(get_db), current_user: User = Dep
 
 
 @router.get("/youtube/search")
-def search_youtube_video(q: str):
+def search_youtube_video(q: str, current_user: User = Depends(get_current_user)):
     import urllib.request
     import urllib.parse
     import re

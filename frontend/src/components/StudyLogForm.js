@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createStudyLog } from '../api/studyLogApi';
 
-export default function StudyLogForm({ onSuccess, defaultTopic, defaultDate }) {
+export default function StudyLogForm({ onSuccess, defaultTopic, defaultDate, availableTopics = [] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState({
     date: defaultDate || '', topic: defaultTopic || '', subtopic: '', hours: '', confidence: '', sql_solved: '', pyspark_solved: '', resources: '', notes: ''
@@ -55,7 +55,10 @@ export default function StudyLogForm({ onSuccess, defaultTopic, defaultDate }) {
               </div>
               <div className="form-group">
                 <label className="form-label required">Topic</label>
-                <input className="form-control" name="topic" placeholder="e.g. System Design" value={form.topic} onChange={handleChange} required />
+                <input className="form-control" name="topic" list="available-topics" placeholder="e.g. System Design" value={form.topic} onChange={handleChange} required autoComplete="off" />
+                <datalist id="available-topics">
+                  {availableTopics.map((t, i) => <option key={i} value={t} />)}
+                </datalist>
               </div>
               <div className="form-group">
                 <label className="form-label">Subtopic</label>

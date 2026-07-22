@@ -1,0 +1,52 @@
+SHIVAM MORE 
+Lead Data Engineer | Agentic AI Engineer | Cloud and Spark Specialist 
+Pune, India | +91-7020093806 | shivamkm1692000@gmail.com | LinkedIn: linkedin.com/in/shivam-more | GitHub: 
+github.com/shivamkm1692000 
+SUMMARY 
+Lead Data Engineer with 4+ years of experience designing cloud-native data platforms on GCP and Azure for high-volume batch and 
+real-time workloads. Expert in Apache Spark, PySpark, SQL, Airflow, Snowflake, and Databricks with a record of optimizing ETL/ELT 
+pipelines for performance, reliability, and cost. Hands-on builder of Agentic AI and GenAI solutions using LangChain, LangGraph, 
+RAG, and Vector DBs, integrating LLMs (OpenAI, Azure OpenAI, Vertex AI) with enterprise data systems. Known for delivering 
+observable, production-grade systems and mentoring engineers. 
+TECHNICAL SKILLS 
+Languages: Python (Pandas, PySpark, FastAPI), SQL (CTEs, Window Functions, Optimization), Shell, Java 
+Big Data and Cloud: Apache Spark, PySpark, Databricks, Delta Lake, Kafka; GCP (BigQuery, Dataproc, GCS, Pub/Sub, Vertex AI); Azure 
+(ADLS Gen2, Synapse, Data Factory, Azure OpenAI, Azure AI Search) 
+Warehousing and DBs: Snowflake, BigQuery, Synapse, SQL Server, MongoDB, PostgreSQL 
+Orchestration and ETL: Apache Airflow, Snowflake Tasks, Azure Data Factory, dbt 
+Agentic AI / GenAI: LangChain, LangGraph, LlamaIndex, RAG, Prompt Engineering, Tool Calling, MCP, OpenAI, Anthropic Claude, 
+Hugging Face 
+Vector DBs: Pinecone, Weaviate, ChromaDB, pgvector, FAISS, Azure AI Search 
+MLOps / LLMOps: MLflow, LangSmith, LangFuse, RAGAS, Guardrails 
+DevOps and Observability: Docker, Kubernetes, Jenkins, Azure DevOps, GitHub Actions, Git, Azure Monitor, Stackdriver 
+WORK EXPERIENCE 
+Persistent Systems, Pune, India                                                                                                                                                   Feb 2022 - Present 
+Lead Data Engineer (Lead Software Engineer)   |   Apr 2026 - Present 
+• Lead architecture and delivery of cloud-native data and AI platforms on GCP and Azure; own technical roadmap and standards 
+for a team of data engineers. 
+• Architect Agentic AI solutions with LangChain and LangGraph, integrating Azure OpenAI and Vertex AI with enterprise data via 
+RAG, tool calling, and vector search. 
+• Drive Spark and BigQuery performance and cost tuning (partitioning, broadcast joins, AQE, query rewrites), reducing job runtime 
+and cluster spend. 
+• Mentor engineers on PySpark, SQL, and GenAI patterns; establish review checklists, runbooks, and observability standards. 
+Senior Data Engineer (Senior Software Engineer)   |   Sep 2024 - Mar 2026 
+• Cut compute spend 20% across GCP/Azure via lifecycle policies, autoscaling, and spot instances. 
+• Designed centralized observability (Azure Monitor, Stackdriver) with custom metrics and alerts, reducing pipeline MTTR by 40%. 
+• Re-architected legacy PySpark ETL with partitioning, broadcast joins, and Delta Lake, improving throughput 3x. 
+• Modernized Jenkins and Azure DevOps CI/CD with automated tests and rollback, enabling faster, more predictable releases. 
+Software Engineer (Data Engineer)   |   Jul 2022 - Aug 2024 
+• Orchestrated ETL with Airflow DAGs and Snowflake Tasks, ensuring 99.9% data availability for daily reporting. 
+• Built near-real-time pipelines using Spark Structured Streaming and Pub/Sub, cutting insight latency from hours to minutes. 
+• Automated deployments with Shell and Jenkins, saving 60 minutes per release and eliminating config drift. 
+• Built reusable PySpark/SQL ingestion and validation frameworks, standardizing pipeline development across clients. 
+Software Engineering Intern   |   Feb 2022 - Jul 2022 
+• Trained on Azure, Databricks, and PySpark; supported migration of on-premise workflows to cloud-native architectures. 
+KEY PROJECTS 
+• Agentic RAG Assistant: LangGraph agent that retrieves context from pgvector and runs SQL tools on BigQuery to enable analyst 
+self-service Q&A. 
+• Self-Healing Pipeline Agent: Monitors Airflow failures, classifies root cause via LLM tool calls, and auto-files Jira tickets with 
+proposed fixes. 
+CERTIFICATIONS 
+Google Cloud Professional Data Engineer | Google Cloud Associate Cloud Engineer | Microsoft Azure Fundamentals (AZ-900) 
+EDUCATION 
+B.E., Computer Engineering, Savitribai Phule Pune University, 2019 - 2022 | CGPA: 9.39 

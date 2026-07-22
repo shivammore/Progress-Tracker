@@ -146,6 +146,28 @@ export default function TargetCompanyList() {
         </div>
       </div>
 
+      {/* Pipeline Visualization */}
+      <div style={{
+        display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', padding: '1rem',
+        background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)',
+        overflowX: 'auto', flexWrap: 'nowrap'
+      }}>
+        {['Not Contacted', 'Contacted', 'Applied', 'Interviewing', 'Offer', 'Rejected'].map((stage, i, arr) => {
+          const count = companies.filter(c => (c.status || '').toLowerCase() === stage.toLowerCase()).length;
+          const pct = companies.length > 0 ? (count / companies.length) * 100 : 0;
+          return (
+            <div key={stage} style={{ flex: 1, minWidth: '100px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                {stage} ({count})
+              </div>
+              <div style={{ height: '8px', background: 'var(--bg-main)', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: stage === 'Rejected' ? 'var(--danger)' : stage === 'Offer' ? 'var(--success)' : 'var(--accent)', transition: 'width 0.5s' }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       <style>{`
         .form-label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem; }
         .company-list { display: flex; flex-direction: column; gap: 0.75rem; }

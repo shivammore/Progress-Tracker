@@ -3,9 +3,9 @@ import { updateJobApp } from '../api/jobAppApi';
 
 const KANBAN_STATUSES = [
   { key: 'Wishlist', label: '🎯 Wishlist', color: '#64748b', bg: '#f1f5f9' },
-  { key: 'Applied', label: '📄 Applied', color: '#3b82f6', bg: '#eff6ff' },
-  { key: 'Phone Screen', label: '📞 Phone Screen', color: '#8b5cf6', bg: '#f5f3ff' },
-  { key: 'Interviewing', label: '🎤 Interviewing', color: '#f59e0b', bg: '#fffbeb' },
+  { key: 'Applied', label: '📄 Applied', color: '#3b82f6', bg: '#eff6ff', wipLimit: 20 },
+  { key: 'Phone Screen', label: '📞 Phone Screen', color: '#8b5cf6', bg: '#f5f3ff', wipLimit: 5 },
+  { key: 'Interviewing', label: '🎤 Interviewing', color: '#f59e0b', bg: '#fffbeb', wipLimit: 5 },
   { key: 'Offer', label: '💰 Offer', color: '#10b981', bg: '#ecfdf5' },
   { key: 'Rejected', label: '❌ Rejected', color: '#ef4444', bg: '#fef2f2' }
 ];
@@ -105,6 +105,7 @@ function KanbanEditCard({ app, onSave, onCancel }) {
 }
 
 export default function JobKanbanView({ apps, onAppUpdated, onDeleteApp, onEditApp, editId, onSaveEdit, onCancelEdit }) {
+  const [collapsedColumns, setCollapsedColumns] = useState(new Set());
   
   const handleDragStart = (e, appId) => {
     e.dataTransfer.setData('text/plain', appId.toString());
@@ -138,6 +139,13 @@ export default function JobKanbanView({ apps, onAppUpdated, onDeleteApp, onEditA
     }
   };
 
+  const toggleColumn = (key) => {
+    const next = new Set(collapsedColumns);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setCollapsedColumns(next);
+  };
+
   // Group applications by status key
   const groupedApps = KANBAN_STATUSES.reduce((acc, status) => {
     acc[status.key] = apps.filter(app => {
@@ -156,6 +164,18 @@ export default function JobKanbanView({ apps, onAppUpdated, onDeleteApp, onEditA
     <div className="kanban-board">
       {KANBAN_STATUSES.map(status => {
         const columnApps = groupedApps[status.key] || [];
+        const isCollapsed = collapsedColumns.has(status.key);
+        const overLimit = status.wipLimit && columnApps.length > status.wipLimit;
+        
+        if (isCollapsed) {
+          return (
+            <div key={status.key} className="kanban-column" style={{ width: '60px', flex: 'none', background: 'var(--bg-main)', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0' }} onClick={() => toggleColumn(status.key)}>
+              <span style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', fontWeight: 700, color: 'var(--text-secondary)' }}>{status.label}</span>
+              <span className="kanban-column-count" style={{ marginTop: '1rem' }}>{columnApps.length}</span>
+            </div>
+          );
+        }
+
         return (
           <div 
             key={status.key}
@@ -163,9 +183,13 @@ export default function JobKanbanView({ apps, onAppUpdated, onDeleteApp, onEditA
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, status.key)}
           >
-            <div className="kanban-column-header" style={{ borderTop: `4px solid ${status.color}` }}>
-              <span className="kanban-column-title">{status.label}</span>
-              <span className="kanban-column-count">{columnApps.length}</span>
+            <div className="kanban-column-header" style={{ borderTop: `4px solid ${status.color}`, background: overLimit ? 'rgba(239, 68, 68, 0.1)' : 'transparent' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => toggleColumn(status.key)}>
+                <span className="kanban-column-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{status.label}</span>
+                <span className="kanban-column-count" style={{ background: overLimit ? 'var(--danger)' : 'var(--bg-main)', color: overLimit ? 'white' : 'inherit' }}>
+                  {columnApps.length} {status.wipLimit ? `/ ${status.wipLimit}` : ''}
+                </span>
+              </div>
             </div>
             
             <div className="kanban-cards-container">

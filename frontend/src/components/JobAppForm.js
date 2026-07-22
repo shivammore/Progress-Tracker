@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createJobApp } from '../api/jobAppApi';
 import { fetchTargetCompanies, updateTargetCompany } from '../api/targetCompanyApi';
+import callAI from '../api/aiApi';
 
 export default function JobAppForm({ onSuccess, defaultCompany }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +10,8 @@ export default function JobAppForm({ onSuccess, defaultCompany }) {
   });
   const [error, setError] = useState(null);
   const [targetCompanies, setTargetCompanies] = useState([]);
+  const [rawJd, setRawJd] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
 
   useEffect(() => {
     fetchTargetCompanies().then(res => setTargetCompanies(res.data)).catch(err => console.error("Failed to fetch target companies", err));
@@ -52,6 +55,54 @@ export default function JobAppForm({ onSuccess, defaultCompany }) {
     }
   };
 
+  const handleAutoFill = async () => {
+    if (!rawJd.trim()) {
+      setError('Please paste a job description first.');
+      return;
+    }
+    
+    setIsParsing(true);
+    setError(null);
+    
+    const prompt = `Extract the following details from this job description as a raw JSON object. Do not include markdown formatting or backticks.
+If a detail is not found, leave it as an empty string.
+{
+  "company": "Company name",
+  "role": "Job title",
+  "tech_stack": "Comma separated list of core technologies mentioned"
+}
+
+Job Description:
+${rawJd}`;
+
+    try {
+      const response = await callAI(prompt);
+      let parsed = {};
+      try {
+        const cleaned = response.replace(/```json/g, '').replace(/```/g, '').trim();
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        console.error("Failed to parse JSON from AI", response);
+        setError("AI returned invalid data format.");
+        setIsParsing(false);
+        return;
+      }
+      
+      setForm(prev => ({
+        ...prev,
+        company: parsed.company || prev.company,
+        role: parsed.role || prev.role,
+        notes: parsed.tech_stack ? (prev.notes ? `${prev.notes}\n\nTech Stack: ${parsed.tech_stack}` : `Tech Stack: ${parsed.tech_stack}`) : prev.notes
+      }));
+      setRawJd('');
+    } catch (err) {
+      console.error(err);
+      setError('Failed to parse JD via AI. Make sure your AI API key is configured in settings.');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
   return (
     <div className="form-collapsible">
       <div className="form-collapsible-header" onClick={() => setIsOpen(!isOpen)}>
@@ -61,6 +112,32 @@ export default function JobAppForm({ onSuccess, defaultCompany }) {
       {isOpen && (
         <div className="form-collapsible-body">
           <form onSubmit={handleSubmit}>
+            <div className="form-group" style={{ marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label className="form-label" style={{ marginBottom: 0 }}>✨ Automated Job Miner</label>
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  onClick={handleAutoFill}
+                  disabled={isParsing || !rawJd.trim()}
+                  style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem' }}
+                >
+                  {isParsing ? 'Parsing...' : 'Auto-Fill from JD'}
+                </button>
+              </div>
+              <textarea 
+                className="form-control" 
+                placeholder="Paste the raw job description text here..." 
+                value={rawJd} 
+                onChange={e => setRawJd(e.target.value)} 
+                rows={3}
+                style={{ fontSize: '0.9rem' }}
+              />
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                The AI will extract the Company, Role, and Tech Stack automatically.
+              </div>
+            </div>
+
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label required">Date Applied</label>

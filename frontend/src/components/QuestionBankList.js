@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { fetchQuestions, deleteQuestion, updateQuestion, createQuestion, reviewQuestion } from '../api/questionBankApi';
-import callAI from '../api/aiApi';
 import QuestionBankForm from './QuestionBankForm';
-import RightSidebarWidgets from './RightSidebarWidgets';
 
 function EditCardInline({ q, onSave, onCancel }) {
   const [form, setForm] = useState({ ...q });
@@ -65,6 +63,15 @@ function FlashcardPractice({ questions, onExit, onUpdateQuestion }) {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [ratings, setRatings] = useState([]);
   const [slideDir, setSlideDir] = useState(null);
+  const [xpPopups, setXpPopups] = React.useState([]);
+
+  const handleSpeak = (text) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text.replace(/[#_*`[\]()]/g, ''));
+      window.speechSynthesis.speak(utterance);
+    }
+  };
 
   // SRS Sort: review due first
   const practiceQueue = useMemo(() => {
@@ -90,10 +97,17 @@ function FlashcardPractice({ questions, onExit, onUpdateQuestion }) {
     }
   };
 
-  const handleRate = async (confidenceValue) => {
+  const handleRate = async (confidenceValue, e) => {
     if (isAnimating) return;
     setIsAnimating(true);
     setRatings(prev => [...prev, confidenceValue]);
+
+    if (e) {
+      const rect = e.target.getBoundingClientRect();
+      const newPopup = { id: Date.now(), x: rect.left + 20, y: rect.top - 20 };
+      setXpPopups(prev => [...prev, newPopup]);
+      setTimeout(() => setXpPopups(prev => prev.filter(p => p.id !== newPopup.id)), 1200);
+    }
 
     // Update question via API
     try {
@@ -228,6 +242,10 @@ function FlashcardPractice({ questions, onExit, onUpdateQuestion }) {
           transform: translateY(-1px);
         }
       `}</style>
+
+      {xpPopups.map(p => (
+        <div key={p.id} className="xp-popup" style={{ left: p.x, top: p.y }}>+10 XP</div>
+      ))}
 
       {/* Header */}
       <div style={practiceStyles.header}>
@@ -369,7 +387,17 @@ function FlashcardPractice({ questions, onExit, onUpdateQuestion }) {
                   <div style={{
                     fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent)',
                     textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1.5rem',
-                  }}>Answer</div>
+                    display: 'flex', justifyContent: 'space-between', width: '100%'
+                  }}>
+                    <span>Answer</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleSpeak(currentCard.answer || ''); }} 
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
+                      title="Listen"
+                    >
+                      🎧
+                    </button>
+                  </div>
                   <div style={{
                     fontSize: '1.15rem', fontWeight: 500, color: 'var(--text-primary)',
                     textAlign: 'center', lineHeight: 1.7, maxWidth: '100%',
@@ -398,7 +426,7 @@ function FlashcardPractice({ questions, onExit, onUpdateQuestion }) {
                 <button
                   key={rb.value}
                   className="fc-rating-btn"
-                  onClick={(e) => { e.stopPropagation(); handleRate(rb.value); }}
+                  onClick={(e) => { e.stopPropagation(); handleRate(rb.value, e); }}
                   style={{ borderColor: rb.color + '40' }}
                   onMouseEnter={e => { e.target.style.borderColor = rb.color; e.target.style.background = rb.color + '18'; }}
                   onMouseLeave={e => { e.target.style.borderColor = rb.color + '40'; e.target.style.background = 'var(--bg-card)'; }}
@@ -532,6 +560,33 @@ export default function QuestionBankList() {
   const [showParseModal, setShowParseModal] = useState(false);
   const [notesText, setNotesText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const toggleSelection = (id) => {
+    const next = new Set(selectedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedIds(next);
+  };
+
+  const bulkDifficultyUpdate = async (diff) => {
+    for (const id of selectedIds) {
+      const q = questions.find(x => x.id === id);
+      if (q) await updateQuestion(id, { ...q, difficulty: diff });
+    }
+    setSelectedIds(new Set());
+    loadQuestions();
+  };
+
+  const bulkDelete = async () => {
+    if (window.confirm(`Delete ${selectedIds.size} questions?`)) {
+      for (const id of selectedIds) {
+        await deleteQuestion(id);
+      }
+      setSelectedIds(new Set());
+      loadQuestions();
+    }
+  };
 
   const loadQuestions = useCallback(() => fetchQuestions().then(res => setQuestions(res.data)), []);
   useEffect(() => { loadQuestions(); }, [loadQuestions]);
@@ -659,28 +714,53 @@ export default function QuestionBankList() {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ width: '1px', height: '24px', background: 'var(--border)' }} />
+        {selectedIds.size > 0 ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99, 102, 241, 0.1)', padding: '0.4rem 0.8rem', borderRadius: '20px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--accent)', marginRight: '0.5rem' }}>
+              {selectedIds.size} selected
+            </span>
+            <button className="btn btn-ghost" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', height: 'auto' }} onClick={() => bulkDifficultyUpdate('Easy')}>Easy</button>
+            <button className="btn btn-ghost" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', height: 'auto' }} onClick={() => bulkDifficultyUpdate('Medium')}>Medium</button>
+            <button className="btn btn-ghost" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', height: 'auto' }} onClick={() => bulkDifficultyUpdate('Hard')}>Hard</button>
+            <button className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', height: 'auto' }} onClick={bulkDelete}>🗑️ Delete</button>
+          </div>
+        ) : (
+          <>
+            <div style={{ width: '1px', height: '24px', background: 'var(--border)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Topic:</span>
+              <select className="form-control" value={filterTopic} onChange={e => setFilterTopic(e.target.value)}
+                style={{ minWidth: '120px', padding: '0.4rem 0.6rem' }}>
+                <option value="all">All Topics</option>
+                {topics.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Difficulty:</span>
+              <select className="form-control" value={filterDiff} onChange={e => setFilterDiff(e.target.value)}
+                style={{ minWidth: '100px', padding: '0.4rem 0.6rem' }}>
+                <option value="all">All</option>
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </>
+        )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Topic:</span>
-          <select className="form-control" value={filterTopic} onChange={e => setFilterTopic(e.target.value)}
-            style={{ minWidth: '120px', padding: '0.4rem 0.6rem' }}>
-            <option value="all">All Topics</option>
-            {topics.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Difficulty:</span>
-          <select className="form-control" value={filterDiff} onChange={e => setFilterDiff(e.target.value)}
-            style={{ minWidth: '100px', padding: '0.4rem 0.6rem' }}>
-            <option value="all">All</option>
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
-        <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          Showing <strong style={{ color: 'var(--text-primary)' }}>{filtered.length}</strong> questions
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.8rem' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>
+            <strong style={{ color: 'var(--text-primary)' }}>{filtered.length}</strong> questions
+          </span>
+          <div style={{ position: 'relative', width: '40px', height: '40px' }} title="SRS Progress: Items with confidence >= 4">
+            <svg viewBox="0 0 36 36" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--border)" strokeWidth="4" />
+              <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--success)" strokeWidth="4" strokeDasharray={`${filtered.length ? Math.round((filtered.filter(q => q.confidence >= 4).length / filtered.length) * 100) : 0}, 100`} />
+            </svg>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+              {filtered.length ? Math.round((filtered.filter(q => q.confidence >= 4).length / filtered.length) * 100) : 0}%
+            </div>
+          </div>
         </div>
       </div>
 
@@ -704,17 +784,20 @@ export default function QuestionBankList() {
       {/* Main List */}
       <div className="dp-cards-container">
         {filtered.map(q => (
-          <div key={q.id} className="q-card" style={editId === q.id ? { borderColor: 'var(--accent)', boxShadow: 'var(--shadow-md)' } : {}}>
+          <div key={q.id} className="q-card" style={editId === q.id ? { borderColor: 'var(--accent)', boxShadow: 'var(--shadow-md)' } : (selectedIds.has(q.id) ? { borderColor: 'var(--accent-light)', background: 'var(--bg-main)' } : {})}>
             {editId === q.id ? (
               <EditCardInline q={q} onSave={handleSave} onCancel={() => setEditId(null)} />
             ) : (
               <>
+                <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 2 }}>
+                  <input type="checkbox" checked={selectedIds.has(q.id)} onChange={() => toggleSelection(q.id)} style={{ cursor: 'pointer', transform: 'scale(1.2)' }} />
+                </div>
                 <div className="q-card-actions">
                   <button className="q-card-btn" onClick={() => setEditId(q.id)} title="Edit">✏️</button>
                   <button className="q-card-btn danger" onClick={() => handleDelete(q.id)} title="Delete">🗑️</button>
                 </div>
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', paddingLeft: '2rem' }}>
                   <span className={getDiffBadge(q.difficulty)}>{q.difficulty}</span>
                   <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {q.topic}

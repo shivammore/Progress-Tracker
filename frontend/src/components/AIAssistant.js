@@ -7,10 +7,12 @@ import axios from 'axios';
 import API_BASE_URL from '../api/config';
 
 const SUGGESTED_CHIPS = [
-  "How can I improve my Python confidence? 💡",
-  "Generate FAANG mock questions checklist 🎯",
-  "Explain dynamic programming analogy 🧠",
-  "Create an SQL optimization study plan 📊"
+  "How can I improve my Python confidence?",
+  "Generate FAANG mock questions checklist",
+  "Explain dynamic programming analogy",
+  "Create an SQL optimization study plan",
+  "What are top system design patterns?",
+  "Help me prepare for behavioral round",
 ];
 
 export default function AIAssistant() {
@@ -24,6 +26,8 @@ export default function AIAssistant() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [includeContext, setIncludeContext] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
@@ -174,6 +178,21 @@ Please customize your tutoring responses to align with these facts where helpful
     }
   };
 
+  const handleExportChat = () => {
+    const text = messages.map(m => `[${m.role === 'user' ? 'You' : 'AI Tutor'}]\n${m.text}`).join('\n\n---\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'AI_Tutor_Chat_' + new Date().toISOString().slice(0, 10) + '.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const filteredMessages = searchQuery.trim()
+    ? messages.filter(m => m.text.toLowerCase().includes(searchQuery.toLowerCase()))
+    : messages;
+
   if (!apiKey) {
     return (
       <div className="section-card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
@@ -193,20 +212,28 @@ Please customize your tutoring responses to align with these facts where helpful
     <div className="section-card ai-assistant-card" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', padding: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexShrink: 0 }}>
         <h2 className="section-title" style={{ margin: 0 }}>
-          <span className="section-title-emoji">🤖</span> AI Tutor
+          <span className="section-title-emoji">&#x1F916;</span> AI Tutor
         </h2>
-        <button 
-          onClick={handleClearHistory} 
-          className="btn btn-ghost" 
-          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
-          title="Clear Conversation Logs"
-        >
-          🗑️ Clear History
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button onClick={() => setShowSearch(!showSearch)} className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} title="Search Conversation">&#x1F50D; Search</button>
+          <button onClick={handleExportChat} className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} title="Export Conversation">&#x1F4E5; Export</button>
+          <button onClick={handleClearHistory} className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} title="Clear History">&#x1F5D1;&#xFE0F; Clear</button>
+        </div>
       </div>
+
+      {showSearch && (
+        <div style={{ marginBottom: '0.75rem', flexShrink: 0, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input type="text" className="form-control" placeholder="Search messages..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ flex: 1, padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} autoFocus />
+          {searchQuery && (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              {filteredMessages.length} match{filteredMessages.length !== 1 ? 'es' : ''}
+            </span>
+          )}
+        </div>
+      )}
       
       <div className="chat-container">
-        {messages.map((msg, idx) => (
+        {filteredMessages.map((msg, idx) => (
           <div key={idx} className={`chat-message-wrapper ${msg.role === 'user' ? 'chat-message-right' : 'chat-message-left'}`}>
             {msg.role === 'model' && <div className="chat-avatar model-avatar">🤖</div>}
             <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-model'}`}>
@@ -239,7 +266,7 @@ Please customize your tutoring responses to align with these facts where helpful
               <button
                 key={i}
                 className="btn btn-ghost"
-                onClick={() => handleSendPrompt(chip.replace(/ [💡🎯🧠📊]/, ''))}
+                onClick={() => handleSendPrompt(chip)}
                 disabled={isLoading}
                 style={{ 
                   padding: '0.3rem 0.6rem', 

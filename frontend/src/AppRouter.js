@@ -24,6 +24,9 @@ import { Navigate } from 'react-router';
 import { AuthContext } from './context/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
+import CodePlayground from './components/CodePlayground';
+import AgenticProjectHub from './components/AgenticProjectHub';
+import WeeklyReview from './components/WeeklyReview';
 
 
 const navSections = [
@@ -39,6 +42,7 @@ const navSections = [
       { path: '/goals', icon: '🎯', label: 'Long-Term Goals' },
       { path: '/daily', icon: '📅', label: 'Daily Plans' },
       { path: '/roadmap', icon: '🗺️', label: 'Roadmap' },
+      { path: '/weekly-review', icon: '📅', label: 'Weekly Review' },
       { path: '/reminders', icon: '🔔', label: 'Reminders' },
     ],
   },
@@ -49,6 +53,8 @@ const navSections = [
       { path: '/study', icon: '📚', label: 'Study Logs' },
       { path: '/analytics', icon: '📈', label: 'Analytics' },
       { path: '/mock', icon: '🎤', label: 'Mock Interviews' },
+      { path: '/playground', icon: '💻', label: 'Code Playground' },
+      { path: '/agentic-projects', icon: '🛠️', label: 'Agentic Projects' },
       { path: '/milestones', icon: '🚀', label: 'Projects' },
     ],
   },
@@ -85,6 +91,9 @@ const routes = [
   { path: '/roadmap', element: <SectionPage title="🗺️ 8-Week Roadmap"><RoadmapPage /></SectionPage> },
   { path: '/ai-assistant', element: <AIAssistant /> },
   { path: '/settings', element: <Settings /> },
+  { path: '/playground', element: <SectionPage title="💻 Code Playground"><CodePlayground /></SectionPage> },
+  { path: '/agentic-projects', element: <AgenticProjectHub /> },
+  { path: '/weekly-review', element: <WeeklyReview /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ];
 
@@ -117,7 +126,7 @@ function TopBar() {
     if (user && user.username !== name) {
         setName(user.username);
     }
-  }, [user]);
+  }, [user, name]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

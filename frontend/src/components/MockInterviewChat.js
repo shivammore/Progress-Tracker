@@ -8,7 +8,7 @@ import callAI from '../api/aiApi';
 const MAX_QUESTIONS = 5;
 
 const INTERVIEW_TYPES = [
-  "Behavioral", "System Design", "Coding (Python)", "Data Engineering", "SQL", "Machine Learning"
+  "Agentic AI Engineer", "Data Engineer", "Behavioral", "System Design", "Coding (Python)", "SQL", "Machine Learning"
 ];
 
 const styles = {
@@ -58,11 +58,15 @@ const styles = {
 export default function MockInterviewChat({ onClose, onSaveComplete }) {
   const [phase, setPhase] = useState('setup'); // setup, chat, loading, results
   const [type, setType] = useState(INTERVIEW_TYPES[0]);
+  const [focusArea, setFocusArea] = useState('General Agentic AI');
   const [messages, setMessages] = useState([]); // { role: 'user'|'model', content: '' }
+  const [context, setContext] = useState('');
   const [questionCount, setQuestionCount] = useState(0);
   const [inputVal, setInputVal] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [finalReport, setFinalReport] = useState(null);
+  const [timer, setTimer] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
   
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -80,12 +84,10 @@ export default function MockInterviewChat({ onClose, onSaveComplete }) {
       recognition.lang = 'en-US';
 
       recognition.onresult = (event) => {
-        let interimTranscript = '';
         let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) finalTranscript += transcript + ' ';
-          else interimTranscript += transcript;
         }
         if (finalTranscript) {
           setInputVal(prev => prev + finalTranscript);
@@ -100,12 +102,20 @@ export default function MockInterviewChat({ onClose, onSaveComplete }) {
     }
   }, []);
 
+  useEffect(() => {
+    let interval;
+    if (timerActive) {
+      interval = setInterval(() => setTimer(t => t + 1), 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerActive]);
+
   const speakText = (text) => {
     if (!voiceEnabled || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     
     // Clean markdown before speaking
-    const cleanText = text.replace(/[#_*`\[\]()]/g, '');
+    const cleanText = text.replace(/[#_*`[\]()]/g, '');
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
@@ -141,9 +151,11 @@ export default function MockInterviewChat({ onClose, onSaveComplete }) {
   const startInterview = async () => {
     setPhase('chat');
     setIsAiTyping(true);
+    setTimer(0);
+    setTimerActive(false);
     try {
       const prompt = `You are a senior technical interviewer. We are doing a ${type} mock interview. 
-Ask me the first question. Wait for my response. 
+${type === 'Agentic AI Engineer' ? `The specific focus area for this interview is: ${focusArea}.\n` : ''}${context.trim() ? `Here is the specific job description, technologies, or context to focus on:\n${context}\n\n` : ''}Ask me the first question. Wait for my response. 
 Keep it realistic, concise, and focused. Ask only ONE question at a time.`;
       const reply = await callAI(prompt, [{ role: 'system', content: `You are an interviewer. Format responses nicely using markdown.` }]);
       setMessages([{ role: 'model', content: reply }]);
@@ -154,6 +166,7 @@ Keep it realistic, concise, and focused. Ask only ONE question at a time.`;
       setPhase('setup');
     } finally {
       setIsAiTyping(false);
+      setTimerActive(true);
     }
   };
 
@@ -164,6 +177,7 @@ Keep it realistic, concise, and focused. Ask only ONE question at a time.`;
     setMessages(newHistory);
     setInputVal('');
     setIsAiTyping(true);
+    setTimerActive(false);
 
     try {
       if (questionCount < MAX_QUESTIONS) {
@@ -196,7 +210,23 @@ Keep it realistic, concise, and focused. Ask only ONE question at a time.`;
       setMessages([...newHistory, { role: 'model', content: '❌ Error: ' + e.message }]);
     } finally {
       setIsAiTyping(false);
+      if (questionCount < MAX_QUESTIONS) {
+        setTimer(0);
+        setTimerActive(true);
+      }
     }
+  };
+
+  const handleExport = () => {
+    if (!finalReport) return;
+    const text = `Mock Interview Report: ${type}\nScore: ${finalReport.score}/10\n\nStrengths:\n${finalReport.strengths}\n\nWeak Areas:\n${finalReport.weak_areas}\n\nAction Items:\n${finalReport.action_items}\n\nDetailed Feedback:\n${finalReport.detailed_feedback}`;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `MockInterview_${type.replace(/ /g, '_')}_Report.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleSaveRecord = async () => {
@@ -245,7 +275,14 @@ Keep it realistic, concise, and focused. Ask only ONE question at a time.`;
           <div style={{ fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             🎤 AI Mock Interview {phase === 'chat' && <span style={{ fontSize: '0.8rem', background: 'var(--accent-glow)', color: 'var(--accent)', padding: '0.2rem 0.6rem', borderRadius: '1rem', marginLeft: '0.5rem' }}>Q{questionCount}/{MAX_QUESTIONS}</span>}
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {phase === 'chat' && !isAiTyping && (
+              <div style={{ fontSize: '0.9rem', color: timer > 60 ? 'var(--warning)' : 'var(--text-secondary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                ⏱️ {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
+              </div>
+            )}
+            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+          </div>
         </div>
 
         {/* Setup Phase */}
@@ -260,6 +297,28 @@ Keep it realistic, concise, and focused. Ask only ONE question at a time.`;
               <select className="form-control" value={type} onChange={e => setType(e.target.value)} style={{ marginBottom: '1.5rem' }}>
                 {INTERVIEW_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
+
+              {type === 'Agentic AI Engineer' && (
+                <>
+                  <label className="form-label">Focus Area</label>
+                  <select className="form-control" value={focusArea} onChange={e => setFocusArea(e.target.value)} style={{ marginBottom: '1.5rem' }}>
+                    <option value="RAG System Design">RAG System Design</option>
+                    <option value="Agent Architecture">Agent Architecture</option>
+                    <option value="Multi-Agent Systems">Multi-Agent Systems</option>
+                    <option value="LLMOps & Production">LLMOps & Production</option>
+                    <option value="General Agentic AI">General Agentic AI</option>
+                  </select>
+                </>
+              )}
+              
+              <label className="form-label">Job Context or Specific Topics (Optional)</label>
+              <textarea 
+                className="form-control" 
+                value={context} 
+                onChange={e => setContext(e.target.value)} 
+                placeholder="e.g. LangChain, Vector DBs, Snowflake, Airflow..." 
+                style={{ marginBottom: '1.5rem', minHeight: '80px', resize: 'vertical' }}
+              />
               
               <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)' }}>
                 <input 
@@ -361,6 +420,7 @@ Keep it realistic, concise, and focused. Ask only ONE question at a time.`;
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
               <button className="btn btn-ghost" onClick={() => { setPhase('setup'); setMessages([]); setQuestionCount(0); setFinalReport(null); }}>🔄 Try Another</button>
+              <button className="btn btn-ghost" onClick={handleExport} style={{ border: '1px solid var(--border)' }}>📥 Export Report</button>
               <button className="btn btn-primary" onClick={handleSaveRecord}>💾 Save Record</button>
             </div>
           </div>

@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createDailyPlan } from '../api/dailyPlanApi';
+import { useToast } from './ToastManager';
 
 export default function DailyPlanForm({ onSuccess, activeTrack = "Default" }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const toast = useToast();
   const [form, setForm] = useState({
     day: '',
     date: '',
@@ -14,7 +17,14 @@ export default function DailyPlanForm({ onSuccess, activeTrack = "Default" }) {
     hours_actual: '',
     notes: ''
   });
-  const [error, setError] = useState(null);
+
+  // Auto-populate date when opening
+  useEffect(() => {
+    if (isOpen && !form.date) {
+      const today = new Date().toISOString().split('T')[0];
+      setForm(prev => ({ ...prev, date: today }));
+    }
+  }, [isOpen, form.date]);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -33,11 +43,12 @@ export default function DailyPlanForm({ onSuccess, activeTrack = "Default" }) {
       setForm({
         day: '', date: '', week: '', focus_area: '', tasks: '', hours_planned: '', status: 'Not Started', hours_actual: '', notes: ''
       });
-      setError(null);
       setIsOpen(false);
+      if (toast) toast.success('Daily plan added successfully!');
       if (onSuccess) onSuccess();
     } catch (err) {
-      setError('Failed to add daily plan');
+      setError(err.message || 'Failed to add daily plan');
+      if (toast) toast.error('Failed to add daily plan');
     }
   };
 

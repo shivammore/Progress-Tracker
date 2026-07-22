@@ -24,12 +24,36 @@ export default function Register() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  const getPasswordStrength = (pwd) => {
+    let score = 0;
+    if (pwd.length >= 8) score += 1;
+    if (pwd.length >= 12) score += 1;
+    if (/[A-Z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+    return Math.min(score, 4);
+  };
+
+  const validateEmail = (email) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
     
+    if (!validateEmail(username)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+    
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+
+    if (getPasswordStrength(password) < 2) {
+      setError("Password is too weak. Please use a stronger password.");
       return;
     }
     
@@ -142,6 +166,29 @@ export default function Register() {
               onFocus={(e) => e.target.style.border = '1px solid #6366f1'}
               onBlur={(e) => e.target.style.border = '1px solid rgba(255, 255, 255, 0.1)'}
             />
+            {/* Password Strength Meter */}
+            {password.length > 0 && (
+              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '4px', height: '4px' }}>
+                {[1, 2, 3, 4].map(level => {
+                  const strength = getPasswordStrength(password);
+                  let bgColor = 'rgba(255,255,255,0.1)';
+                  if (level <= strength) {
+                    if (strength <= 1) bgColor = '#ef4444'; // Red
+                    else if (strength === 2) bgColor = '#f59e0b'; // Yellow
+                    else if (strength === 3) bgColor = '#10b981'; // Green
+                    else bgColor = '#8b5cf6'; // Purple (Very strong)
+                  }
+                  return (
+                    <div key={level} style={{ flex: 1, borderRadius: '2px', background: bgColor, transition: 'background 0.3s' }} />
+                  );
+                })}
+              </div>
+            )}
+            {password.length > 0 && (
+              <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem', textAlign: 'right' }}>
+                {['Weak', 'Fair', 'Good', 'Strong'][Math.max(0, getPasswordStrength(password) - 1)] || 'Too Short'}
+              </div>
+            )}
           </div>
           <div style={{ position: 'relative' }}>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confirm Password</label>

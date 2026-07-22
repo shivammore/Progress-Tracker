@@ -4,6 +4,7 @@ const PRESETS = {
   pomodoro: { work: 25, break: 5, label: 'Pomodoro' },
   deep: { work: 50, break: 10, label: 'Deep Work' },
   quick: { work: 15, break: 3, label: 'Quick Sprint' },
+  longBreak: { work: 0, break: 15, label: 'Long Break' },
 };
 
 const styles = {
@@ -73,15 +74,35 @@ const styles = {
   },
 };
 
-export default function PomodoroTimer({ topic, onSessionComplete, onClose }) {
-  const [preset, setPreset] = useState('pomodoro');
-  const [phase, setPhase] = useState('idle'); // idle, work, break, done
-  const [timeLeft, setTimeLeft] = useState(PRESETS.pomodoro.work * 60);
-  const [totalWorkSeconds, setTotalWorkSeconds] = useState(0);
-  const [sessionsCompleted, setSessionsCompleted] = useState(0);
-  const [minimized, setMinimized] = useState(false);
+export default function PomodoroTimer({ topic: initialTopic, onSessionComplete, onClose }) {
+  const [preset, setPreset] = useState(() => localStorage.getItem('pomodoro_preset') || 'pomodoro');
+  const [phase, setPhase] = useState(() => localStorage.getItem('pomodoro_phase') || 'idle'); // idle, work, break, done
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const saved = localStorage.getItem('pomodoro_timeLeft');
+    return saved ? parseInt(saved, 10) : PRESETS[preset || 'pomodoro'].work * 60;
+  });
+  const [totalWorkSeconds, setTotalWorkSeconds] = useState(() => parseInt(localStorage.getItem('pomodoro_totalWorkSeconds') || '0', 10));
+  const [sessionsCompleted, setSessionsCompleted] = useState(() => parseInt(localStorage.getItem('pomodoro_sessionsCompleted') || '0', 10));
+  const [minimized, setMinimized] = useState(() => localStorage.getItem('pomodoro_minimized') === 'true');
+  const [topic, setTopic] = useState(initialTopic || '');
+  const [dailyFocusMinutes, setDailyFocusMinutes] = useState(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const saved = JSON.parse(localStorage.getItem('pomodoro_daily_stats') || '{}');
+    return saved[today] || 0;
+  });
+  
   const intervalRef = useRef(null);
   const startTimeRef = useRef(null);
+
+  // Persist state
+  useEffect(() => {
+    localStorage.setItem('pomodoro_preset', preset);
+    localStorage.setItem('pomodoro_phase', phase);
+    localStorage.setItem('pomodoro_timeLeft', String(timeLeft));
+    localStorage.setItem('pomodoro_totalWorkSeconds', String(totalWorkSeconds));
+    localStorage.setItem('pomodoro_sessionsCompleted', String(sessionsCompleted));
+    localStorage.setItem('pomodoro_minimized', String(minimized));
+  }, [preset, phase, timeLeft, totalWorkSeconds, sessionsCompleted, minimized]);
 
   const currentPreset = PRESETS[preset];
   const totalTime = phase === 'break' ? currentPreset.break * 60 : currentPreset.work * 60;
@@ -103,6 +124,15 @@ export default function PomodoroTimer({ topic, onSessionComplete, onClose }) {
           const elapsed = currentPreset.work * 60;
           setTotalWorkSeconds(p => p + elapsed);
           setSessionsCompleted(p => p + 1);
+          
+          // Update daily stats
+          const today = new Date().toISOString().slice(0, 10);
+          const savedStats = JSON.parse(localStorage.getItem('pomodoro_daily_stats') || '{}');
+          const newDaily = (savedStats[today] || 0) + currentPreset.work;
+          savedStats[today] = newDaily;
+          localStorage.setItem('pomodoro_daily_stats', JSON.stringify(savedStats));
+          setDailyFocusMinutes(newDaily);
+
           // Auto-start break
           setPhase('break');
           return currentPreset.break * 60;
@@ -124,8 +154,13 @@ export default function PomodoroTimer({ topic, onSessionComplete, onClose }) {
   }, [phase, tick]);
 
   const startWork = () => {
-    setPhase('work');
-    setTimeLeft(currentPreset.work * 60);
+    if (currentPreset.work === 0) {
+      setPhase('break');
+      setTimeLeft(currentPreset.break * 60);
+    } else {
+      setPhase('work');
+      setTimeLeft(currentPreset.work * 60);
+    }
     startTimeRef.current = Date.now();
   };
 
@@ -147,6 +182,13 @@ export default function PomodoroTimer({ topic, onSessionComplete, onClose }) {
 
   const finishSession = () => {
     const hours = Math.round((totalWorkSeconds / 3600) * 100) / 100;
+    
+    // Clear persisted state
+    localStorage.removeItem('pomodoro_phase');
+    localStorage.removeItem('pomodoro_timeLeft');
+    localStorage.removeItem('pomodoro_totalWorkSeconds');
+    localStorage.removeItem('pomodoro_sessionsCompleted');
+
     if (onSessionComplete) onSessionComplete(hours);
     onClose();
   };
@@ -185,13 +227,27 @@ export default function PomodoroTimer({ topic, onSessionComplete, onClose }) {
       </div>
 
       <div style={styles.body}>
-        {topic && <div style={styles.topicBadge}>📚 {topic}</div>}
+        {phase === 'idle' ? (
+          <input 
+            type="text" 
+            placeholder="What are you working on?" 
+            value={topic} 
+            onChange={(e) => setTopic(e.target.value)}
+            style={{ 
+              width: '100%', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)', background: 'var(--bg-main)', color: 'var(--text-primary)',
+              marginBottom: '1rem', fontSize: '0.85rem', textAlign: 'center'
+            }}
+          />
+        ) : (
+          topic && <div style={styles.topicBadge}>📚 {topic}</div>
+        )}
 
         {phase === 'idle' && (
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
             {Object.entries(PRESETS).map(([key, val]) => (
               <button key={key} style={styles.presetBtn(preset === key)} onClick={() => changePreset(key)}>
-                {val.label} ({val.work}m)
+                {val.label} {val.work > 0 ? `(${val.work}m)` : `(${val.break}m)`}
               </button>
             ))}
           </div>
@@ -206,15 +262,22 @@ export default function PomodoroTimer({ topic, onSessionComplete, onClose }) {
           </div>
         </div>
 
-        {sessionsCompleted > 0 && (
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-            {sessionsCompleted} session{sessionsCompleted > 1 ? 's' : ''} · {Math.round(totalWorkSeconds / 60)}m total
-          </div>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0 1rem' }}>
+          {sessionsCompleted > 0 && (
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              🔄 {sessionsCompleted} session{sessionsCompleted > 1 ? 's' : ''} ({Math.round(totalWorkSeconds / 60)}m)
+            </div>
+          )}
+          {dailyFocusMinutes > 0 && (
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              📈 Today: {dailyFocusMinutes}m
+            </div>
+          )}
+        </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
           {phase === 'idle' && (
-            <button style={styles.actionBtn('primary')} onClick={startWork}>▶ Start Focus</button>
+            <button style={styles.actionBtn('primary')} onClick={startWork}>▶ Start {currentPreset.work > 0 ? 'Focus' : 'Break'}</button>
           )}
           {(phase === 'work' || phase === 'break') && (
             <>
